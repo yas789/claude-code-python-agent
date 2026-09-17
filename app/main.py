@@ -36,6 +36,11 @@ def read_file(path):
         return file.read()
 
 
+TOOL_FUNCTIONS = {
+    "read_file": read_file,
+}
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", required=True)
@@ -65,11 +70,12 @@ def get_message(response):
 
 
 def execute_tool_call(tool_call):
-    if tool_call.function.name != "read_file":
-        raise RuntimeError(f"unknown tool: {tool_call.function.name}")
+    tool_name = tool_call.function.name
+    if tool_name not in TOOL_FUNCTIONS:
+        raise RuntimeError(f"unknown tool: {tool_name}")
 
     arguments = json.loads(tool_call.function.arguments)
-    return read_file(arguments["path"])
+    return TOOL_FUNCTIONS[tool_name](**arguments)
 
 
 def append_tool_results(messages, message):
