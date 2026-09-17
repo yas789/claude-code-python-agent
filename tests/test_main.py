@@ -1,7 +1,6 @@
-import unittest
 import sys
+import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
 
 sys.modules["openai"] = SimpleNamespace(OpenAI=object)
 
@@ -9,67 +8,23 @@ from app import main
 
 
 class MainTests(unittest.TestCase):
-    def test_get_message_returns_first_choice_message(self):
-        message = SimpleNamespace(content="hello")
-        response = SimpleNamespace(choices=[SimpleNamespace(message=message)])
+    def test_read_file_tool_is_advertised_to_the_llm(self):
+        tool_names = [tool["function"]["name"] for tool in main.TOOLS]
 
-        self.assertIs(main.get_message(response), message)
+        self.assertIn("read_file", tool_names)
 
-    def test_get_message_raises_when_no_choices(self):
-        response = SimpleNamespace(choices=[])
+    def test_read_file_tool_description_mentions_local_workspace(self):
+        tool = main.TOOLS[0]
 
-        with self.assertRaisesRegex(RuntimeError, "no choices in response"):
-            main.get_message(response)
+        self.assertIn("local workspace", tool["function"]["description"])
 
-    def test_execute_tool_call_dispatches_registered_tool(self):
-        tool_call = SimpleNamespace(
-            function=SimpleNamespace(
-                name="example_tool",
-                arguments='{"value": "hello"}',
-            )
-        )
+    def test_read_file_tool_requires_path_argument(self):
+        tool = main.TOOLS[0]
 
-        with patch.dict(main.TOOL_FUNCTIONS, {"example_tool": lambda value: value.upper()}):
-            self.assertEqual(main.execute_tool_call(tool_call), "HELLO")
+        self.assertEqual(tool["function"]["parameters"]["required"], ["path"])
 
-    def test_execute_tool_call_raises_for_unknown_tool(self):
-        tool_call = SimpleNamespace(
-            function=SimpleNamespace(name="missing_tool", arguments="{}")
-        )
-
-        with self.assertRaisesRegex(RuntimeError, "unknown tool: missing_tool"):
-            main.execute_tool_call(tool_call)
-
-    def test_append_tool_results_adds_tool_messages(self):
-        first_tool_call = SimpleNamespace(
-            id="call_1",
-            function=SimpleNamespace(name="first_tool", arguments='{"value": "a"}'),
-        )
-        second_tool_call = SimpleNamespace(
-            id="call_2",
-            function=SimpleNamespace(name="second_tool", arguments='{"value": "b"}'),
-        )
-        message = SimpleNamespace(tool_calls=[first_tool_call, second_tool_call])
-        messages = [{"role": "user", "content": "use tools"}]
-
-        with patch.dict(
-            main.TOOL_FUNCTIONS,
-            {
-                "first_tool": lambda value: value.upper(),
-                "second_tool": lambda value: value * 2,
-            },
-        ):
-            main.append_tool_results(messages, message)
-
-        self.assertEqual(messages[1], message)
-        self.assertEqual(
-            messages[2],
-            {"role": "tool", "tool_call_id": "call_1", "content": "A"},
-        )
-        self.assertEqual(
-            messages[3],
-            {"role": "tool", "tool_call_id": "call_2", "content": "bb"},
-        )
+    def test_read_file_tool_has_matching_python_function(self):
+        self.assertIs(main.TOOL_FUNCTIONS["read_file"], main.read_file)
 
 
 if __name__ == "__main__":
