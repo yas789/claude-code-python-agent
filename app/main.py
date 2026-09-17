@@ -7,6 +7,27 @@ from openai import OpenAI
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = os.getenv("OPENROUTER_BASE_URL", default="https://openrouter.ai/api/v1")
 
+TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "read_file",
+            "description": "Read the contents of a file from the local workspace.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "The relative path of the file to read.",
+                    },
+                },
+                "required": ["path"],
+                "additionalProperties": False,
+            },
+        },
+    }
+]
+
 
 def main():
     p = argparse.ArgumentParser()
@@ -21,6 +42,7 @@ def main():
     chat = client.chat.completions.create(
         model="anthropic/claude-haiku-4.5",
         messages=[{"role": "user", "content": args.p}],
+        tools=TOOLS,
     )
 
     if not chat.choices or len(chat.choices) == 0:
@@ -29,7 +51,14 @@ def main():
     # You can use print statements as follows for debugging, they'll be visible when running tests.
     print("Logs from your program will appear here!", file=sys.stderr)
 
-    print(chat.choices[0].message.content)
+    message = chat.choices[0].message
+    if message.tool_calls:
+        for tool_call in message.tool_calls:
+            print(f"tool: {tool_call.function.name}")
+            print(f"arguments: {tool_call.function.arguments}")
+        return
+
+    print(message.content)
 
 
 if __name__ == "__main__":
