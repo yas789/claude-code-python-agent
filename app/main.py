@@ -7,6 +7,7 @@ from openai import OpenAI
 
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = os.getenv("OPENROUTER_BASE_URL", default="https://openrouter.ai/api/v1")
+MODEL = "anthropic/claude-haiku-4.5"
 
 TOOLS = [
     {
@@ -35,53 +36,71 @@ def read_file(path):
         return file.read()
 
 
-def main():
-    p = argparse.ArgumentParser()
-    p.add_argument("-p", required=True)
-    args = p.parse_args()
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-p", required=True)
+    return parser.parse_args()
 
+
+def create_client():
     if not API_KEY:
         raise RuntimeError("OPENROUTER_API_KEY is not set")
 
-    client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
+    return OpenAI(api_key=API_KEY, base_url=BASE_URL)
 
-    messages = [{"role": "user", "content": args.p}]
 
-    chat = client.chat.completions.create(
-        model="anthropic/claude-haiku-4.5",
+def create_chat_completion(client, messages):
+    return client.chat.completions.create(
+        model=MODEL,
         messages=messages,
         tools=TOOLS,
     )
 
-    if not chat.choices or len(chat.choices) == 0:
+
+def get_message(response):
+    if not response.choices or len(response.choices) == 0:
         raise RuntimeError("no choices in response")
+
+    return response.choices[0].message
+
+
+def execute_tool_call(tool_call):
+    if tool_call.function.name != "read_file":
+        raise RuntimeError(f"unknown tool: {tool_call.function.name}")
+
+    arguments = json.loads(tool_call.function.arguments)
+    return read_file(arguments["path"])
+
+
+def append_tool_results(messages, message):
+    messages.append(message)
+    for tool_call in message.tool_calls:
+        result = execute_tool_call(tool_call)
+        messages.append(
+            {
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": result,
+            }
+        )
+
+
+def main():
+    args = parse_args()
+    client = create_client()
+
+    messages = [{"role": "user", "content": args.p}]
+
+    response = create_chat_completion(client, messages)
+    message = get_message(response)
 
     # You can use print statements as follows for debugging, they'll be visible when running tests.
     print("Logs from your program will appear here!", file=sys.stderr)
 
-    message = chat.choices[0].message
     if message.tool_calls:
-        messages.append(message)
-        for tool_call in message.tool_calls:
-            if tool_call.function.name != "read_file":
-                raise RuntimeError(f"unknown tool: {tool_call.function.name}")
-
-            arguments = json.loads(tool_call.function.arguments)
-            result = read_file(arguments["path"])
-            messages.append(
-                {
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "content": result,
-                }
-            )
-
-        chat = client.chat.completions.create(
-            model="anthropic/claude-haiku-4.5",
-            messages=messages,
-            tools=TOOLS,
-        )
-        message = chat.choices[0].message
+        append_tool_results(messages, message)
+        response = create_chat_completion(client, messages)
+        message = get_message(response)
 
     print(message.content)
 
