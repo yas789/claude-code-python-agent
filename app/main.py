@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import sys
 
@@ -29,6 +30,11 @@ TOOLS = [
 ]
 
 
+def read_file(path):
+    with open(path) as file:
+        return file.read()
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("-p", required=True)
@@ -39,9 +45,11 @@ def main():
 
     client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
 
+    messages = [{"role": "user", "content": args.p}]
+
     chat = client.chat.completions.create(
         model="anthropic/claude-haiku-4.5",
-        messages=[{"role": "user", "content": args.p}],
+        messages=messages,
         tools=TOOLS,
     )
 
@@ -53,10 +61,27 @@ def main():
 
     message = chat.choices[0].message
     if message.tool_calls:
+        messages.append(message)
         for tool_call in message.tool_calls:
-            print(f"tool: {tool_call.function.name}")
-            print(f"arguments: {tool_call.function.arguments}")
-        return
+            if tool_call.function.name != "read_file":
+                raise RuntimeError(f"unknown tool: {tool_call.function.name}")
+
+            arguments = json.loads(tool_call.function.arguments)
+            result = read_file(arguments["path"])
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": result,
+                }
+            )
+
+        chat = client.chat.completions.create(
+            model="anthropic/claude-haiku-4.5",
+            messages=messages,
+            tools=TOOLS,
+        )
+        message = chat.choices[0].message
 
     print(message.content)
 
