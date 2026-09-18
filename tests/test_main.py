@@ -46,6 +46,16 @@ class MainTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "outside workspace"):
             main.read_file("../README.md")
 
+    def test_list_files_lists_workspace_entries(self):
+        files = main.list_files(".")
+
+        self.assertIn("README.md", files)
+        self.assertIn("app", files)
+
+    def test_list_files_rejects_parent_directory_escape(self):
+        with self.assertRaisesRegex(RuntimeError, "outside workspace"):
+            main.list_files("..")
+
 
 if __name__ == "__main__":
     unittest.main()
