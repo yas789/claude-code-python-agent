@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+from pathlib import Path
 import sys
 
 from openai import OpenAI
@@ -9,6 +10,7 @@ API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = os.getenv("OPENROUTER_BASE_URL", default="https://openrouter.ai/api/v1")
 MODEL = "anthropic/claude-haiku-4.5"
 MAX_TOOL_ROUNDS = 10
+WORKSPACE_ROOT = Path.cwd()
 
 TOOLS = [
     {
@@ -33,7 +35,11 @@ TOOLS = [
 
 
 def read_file(path):
-    with open(path) as file:
+    file_path = (WORKSPACE_ROOT / path).resolve()
+    if not file_path.is_relative_to(WORKSPACE_ROOT):
+        raise RuntimeError(f"file is outside workspace: {path}")
+
+    with open(file_path) as file:
         return file.read()
 
 
