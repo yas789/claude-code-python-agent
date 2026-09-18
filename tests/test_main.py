@@ -26,6 +26,19 @@ class MainTests(unittest.TestCase):
     def test_read_file_tool_has_matching_python_function(self):
         self.assertIs(main.TOOL_FUNCTIONS["read_file"], main.read_file)
 
+    def test_every_advertised_tool_has_a_python_function(self):
+        advertised_tool_names = {tool["function"]["name"] for tool in main.TOOLS}
+
+        self.assertLessEqual(advertised_tool_names, set(main.TOOL_FUNCTIONS))
+
+    def test_every_python_tool_is_advertised_to_the_llm(self):
+        advertised_tool_names = {tool["function"]["name"] for tool in main.TOOLS}
+
+        self.assertLessEqual(set(main.TOOL_FUNCTIONS), advertised_tool_names)
+
+    def test_tool_loop_has_a_maximum_round_limit(self):
+        self.assertGreater(main.MAX_TOOL_ROUNDS, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
