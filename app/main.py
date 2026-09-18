@@ -8,6 +8,7 @@ from openai import OpenAI
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = os.getenv("OPENROUTER_BASE_URL", default="https://openrouter.ai/api/v1")
 MODEL = "anthropic/claude-haiku-4.5"
+MAX_TOOL_ROUNDS = 10
 
 TOOLS = [
     {
@@ -97,18 +98,20 @@ def main():
 
     messages = [{"role": "user", "content": args.p}]
 
-    response = create_chat_completion(client, messages)
-    message = get_message(response)
-
     # You can use print statements as follows for debugging, they'll be visible when running tests.
     print("Logs from your program will appear here!", file=sys.stderr)
 
-    if message.tool_calls:
-        append_tool_results(messages, message)
+    for _ in range(MAX_TOOL_ROUNDS):
         response = create_chat_completion(client, messages)
         message = get_message(response)
 
-    print(message.content)
+        if not message.tool_calls:
+            print(message.content)
+            return
+
+        append_tool_results(messages, message)
+
+    raise RuntimeError("exceeded maximum tool call rounds")
 
 
 if __name__ == "__main__":
