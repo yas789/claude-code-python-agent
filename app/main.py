@@ -30,6 +30,24 @@ TOOLS = [
                 "additionalProperties": False,
             },
         },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_files",
+            "description": "List files and directories in the local workspace.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "The relative directory path to list.",
+                    },
+                },
+                "required": ["path"],
+                "additionalProperties": False,
+            },
+        },
     }
 ]
 
@@ -43,8 +61,17 @@ def read_file(path):
         return file.read()
 
 
+def list_files(path):
+    directory_path = (WORKSPACE_ROOT / path).resolve()
+    if not directory_path.is_relative_to(WORKSPACE_ROOT):
+        raise RuntimeError(f"directory is outside workspace: {path}")
+
+    return "\n".join(sorted(child.name for child in directory_path.iterdir()))
+
+
 TOOL_FUNCTIONS = {
     "read_file": read_file,
+    "list_files": list_files,
 }
 
 
