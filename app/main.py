@@ -125,26 +125,29 @@ def append_tool_results(messages, message):
         )
 
 
-def main():
-    args = parse_args()
-    client = create_client()
-
-    messages = [{"role": "user", "content": args.p}]
-
-    # You can use print statements as follows for debugging, they'll be visible when running tests.
-    print("Logs from your program will appear here!", file=sys.stderr)
+def run_agent(client, prompt):
+    messages = [{"role": "user", "content": prompt}]
 
     for _ in range(MAX_TOOL_ROUNDS):
         response = create_chat_completion(client, messages)
         message = get_message(response)
 
         if not message.tool_calls:
-            print(message.content)
-            return
+            return message.content
 
         append_tool_results(messages, message)
 
     raise RuntimeError("exceeded maximum tool call rounds")
+
+
+def main():
+    args = parse_args()
+    client = create_client()
+
+    # You can use print statements as follows for debugging, they'll be visible when running tests.
+    print("Logs from your program will appear here!", file=sys.stderr)
+
+    print(run_agent(client, args.p))
 
 
 if __name__ == "__main__":
