@@ -39,6 +39,13 @@ class MainTests(unittest.TestCase):
     def test_tool_loop_has_a_maximum_round_limit(self):
         self.assertGreater(main.MAX_TOOL_ROUNDS, 0)
 
+    def test_read_file_can_read_workspace_file(self):
+        self.assertIn("Build Your own Claude Code", main.read_file("README.md"))
+
+    def test_read_file_rejects_parent_directory_escape(self):
+        with self.assertRaisesRegex(RuntimeError, "outside workspace"):
+            main.read_file("../README.md")
+
 
 if __name__ == "__main__":
     unittest.main()
