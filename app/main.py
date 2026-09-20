@@ -48,6 +48,32 @@ TOOLS = [
                 "additionalProperties": False,
             },
         },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "edit_file",
+            "description": "Replace exact text in a file in the local workspace.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "The relative path of the file to edit.",
+                    },
+                    "old_text": {
+                        "type": "string",
+                        "description": "The exact existing text to replace.",
+                    },
+                    "new_text": {
+                        "type": "string",
+                        "description": "The replacement text.",
+                    },
+                },
+                "required": ["path", "old_text", "new_text"],
+                "additionalProperties": False,
+            },
+        },
     }
 ]
 
@@ -69,9 +95,26 @@ def list_files(path):
     return "\n".join(sorted(child.name for child in directory_path.iterdir()))
 
 
+def edit_file(path, old_text, new_text):
+    file_path = (WORKSPACE_ROOT / path).resolve()
+    if not file_path.is_relative_to(WORKSPACE_ROOT):
+        raise RuntimeError(f"file is outside workspace: {path}")
+
+    content = file_path.read_text()
+    occurrences = content.count(old_text)
+    if occurrences == 0:
+        raise RuntimeError("old_text not found")
+    if occurrences > 1:
+        raise RuntimeError("old_text appears multiple times")
+
+    file_path.write_text(content.replace(old_text, new_text))
+    return f"updated {path}"
+
+
 TOOL_FUNCTIONS = {
     "read_file": read_file,
     "list_files": list_files,
+    "edit_file": edit_file,
 }
 
 
