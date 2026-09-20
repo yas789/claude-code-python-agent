@@ -181,6 +181,38 @@ class MainTests(unittest.TestCase):
         self.assertIn("README.md", tool_results[0]["content"])
         self.assertIn("Build Your own Claude Code", tool_results[1]["content"])
 
+    def test_run_agent_can_process_edit_file_tool_call(self):
+        final_answer = fixture_text("edit_file_answer.txt")
+
+        with tempfile.TemporaryDirectory() as workspace:
+            file_path = Path(workspace) / "example.txt"
+            file_path.write_text("hello world")
+            client = FakeClient(
+                [
+                    assistant_message(
+                        None,
+                        [
+                            tool_call(
+                                "call_1",
+                                "edit_file",
+                                '{"path": "example.txt", "old_text": "world", "new_text": "agent"}',
+                            )
+                        ],
+                    ),
+                    assistant_message(final_answer),
+                ]
+            )
+
+            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
+                self.assertEqual(main.run_agent(client, "Update example.txt"), final_answer)
+
+            self.assertEqual(file_path.read_text(), "hello agent")
+
+        second_call_messages = client.completions.calls[1]["messages"]
+        self.assertEqual(second_call_messages[2]["role"], "tool")
+        self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
+        self.assertEqual(second_call_messages[2]["content"], "updated example.txt")
+
 
 if __name__ == "__main__":
     unittest.main()
