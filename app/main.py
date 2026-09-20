@@ -10,7 +10,7 @@ API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = os.getenv("OPENROUTER_BASE_URL", default="https://openrouter.ai/api/v1")
 MODEL = "anthropic/claude-haiku-4.5"
 MAX_TOOL_ROUNDS = 10
-WORKSPACE_ROOT = Path.cwd()
+WORKSPACE_ROOT = Path.cwd().resolve()
 
 TOOLS = [
     {
@@ -79,8 +79,9 @@ TOOLS = [
 
 
 def read_file(path):
-    file_path = (WORKSPACE_ROOT / path).resolve()
-    if not file_path.is_relative_to(WORKSPACE_ROOT):
+    workspace_root = WORKSPACE_ROOT.resolve()
+    file_path = (workspace_root / path).resolve()
+    if not file_path.is_relative_to(workspace_root):
         raise RuntimeError(f"file is outside workspace: {path}")
 
     with open(file_path) as file:
@@ -88,16 +89,18 @@ def read_file(path):
 
 
 def list_files(path):
-    directory_path = (WORKSPACE_ROOT / path).resolve()
-    if not directory_path.is_relative_to(WORKSPACE_ROOT):
+    workspace_root = WORKSPACE_ROOT.resolve()
+    directory_path = (workspace_root / path).resolve()
+    if not directory_path.is_relative_to(workspace_root):
         raise RuntimeError(f"directory is outside workspace: {path}")
 
     return "\n".join(sorted(child.name for child in directory_path.iterdir()))
 
 
 def edit_file(path, old_text, new_text):
-    file_path = (WORKSPACE_ROOT / path).resolve()
-    if not file_path.is_relative_to(WORKSPACE_ROOT):
+    workspace_root = WORKSPACE_ROOT.resolve()
+    file_path = (workspace_root / path).resolve()
+    if not file_path.is_relative_to(workspace_root):
         raise RuntimeError(f"file is outside workspace: {path}")
 
     content = file_path.read_text()
