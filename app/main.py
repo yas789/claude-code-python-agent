@@ -78,30 +78,30 @@ TOOLS = [
 ]
 
 
-def read_file(path):
+def resolve_workspace_path(path, path_type):
     workspace_root = WORKSPACE_ROOT.resolve()
-    file_path = (workspace_root / path).resolve()
-    if not file_path.is_relative_to(workspace_root):
-        raise RuntimeError(f"file is outside workspace: {path}")
+    resolved_path = (workspace_root / path).resolve()
+    if not resolved_path.is_relative_to(workspace_root):
+        raise RuntimeError(f"{path_type} is outside workspace: {path}")
+
+    return resolved_path
+
+
+def read_file(path):
+    file_path = resolve_workspace_path(path, "file")
 
     with open(file_path) as file:
         return file.read()
 
 
 def list_files(path):
-    workspace_root = WORKSPACE_ROOT.resolve()
-    directory_path = (workspace_root / path).resolve()
-    if not directory_path.is_relative_to(workspace_root):
-        raise RuntimeError(f"directory is outside workspace: {path}")
+    directory_path = resolve_workspace_path(path, "directory")
 
     return "\n".join(sorted(child.name for child in directory_path.iterdir()))
 
 
 def edit_file(path, old_text, new_text):
-    workspace_root = WORKSPACE_ROOT.resolve()
-    file_path = (workspace_root / path).resolve()
-    if not file_path.is_relative_to(workspace_root):
-        raise RuntimeError(f"file is outside workspace: {path}")
+    file_path = resolve_workspace_path(path, "file")
 
     content = file_path.read_text()
     occurrences = content.count(old_text)
