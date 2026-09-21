@@ -2,7 +2,6 @@ import argparse
 import json
 import os
 from pathlib import Path
-import sys
 
 from openai import OpenAI
 
@@ -200,9 +199,6 @@ def run_agent(client, prompt):
 def main():
     args = parse_args()
     client = create_client()
-
-    # You can use print statements as follows for debugging, they'll be visible when running tests.
-    print("Logs from your program will appear here!", file=sys.stderr)
 
     print(run_agent(client, args.p))
 
