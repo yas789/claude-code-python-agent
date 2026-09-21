@@ -89,6 +89,8 @@ def resolve_workspace_path(path, path_type):
 
 def read_file(path):
     file_path = resolve_workspace_path(path, "file")
+    if not file_path.is_file():
+        raise RuntimeError(f"path is not a file: {path}")
 
     with open(file_path) as file:
         return file.read()
@@ -96,12 +98,16 @@ def read_file(path):
 
 def list_files(path):
     directory_path = resolve_workspace_path(path, "directory")
+    if not directory_path.is_dir():
+        raise RuntimeError(f"path is not a directory: {path}")
 
     return "\n".join(sorted(child.name for child in directory_path.iterdir()))
 
 
 def edit_file(path, old_text, new_text):
     file_path = resolve_workspace_path(path, "file")
+    if not file_path.is_file():
+        raise RuntimeError(f"path is not a file: {path}")
 
     content = file_path.read_text()
     occurrences = content.count(old_text)
@@ -110,7 +116,7 @@ def edit_file(path, old_text, new_text):
     if occurrences > 1:
         raise RuntimeError("old_text appears multiple times")
 
-    file_path.write_text(content.replace(old_text, new_text))
+    file_path.write_text(content.replace(old_text, new_text, 1))
     return f"updated {path}"
 
 

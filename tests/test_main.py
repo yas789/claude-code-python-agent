@@ -87,6 +87,10 @@ class MainTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "outside workspace"):
             main.read_file("../README.md")
 
+    def test_read_file_rejects_directory_path(self):
+        with self.assertRaisesRegex(RuntimeError, "path is not a file"):
+            main.read_file(".")
+
     def test_list_files_lists_workspace_entries(self):
         files = main.list_files(".")
 
@@ -96,6 +100,10 @@ class MainTests(unittest.TestCase):
     def test_list_files_rejects_parent_directory_escape(self):
         with self.assertRaisesRegex(RuntimeError, "outside workspace"):
             main.list_files("..")
+
+    def test_list_files_rejects_file_path(self):
+        with self.assertRaisesRegex(RuntimeError, "path is not a directory"):
+            main.list_files("README.md")
 
     def test_edit_file_replaces_exact_text_once(self):
         with tempfile.TemporaryDirectory() as workspace:
@@ -131,6 +139,12 @@ class MainTests(unittest.TestCase):
             with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
                 with self.assertRaisesRegex(RuntimeError, "outside workspace"):
                     main.edit_file("../example.txt", "old", "new")
+
+    def test_edit_file_rejects_directory_path(self):
+        with tempfile.TemporaryDirectory() as workspace:
+            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
+                with self.assertRaisesRegex(RuntimeError, "path is not a file"):
+                    main.edit_file(".", "old", "new")
 
     def test_run_agent_returns_final_answer_without_tool_calls(self):
         final_answer = fixture_text("final_answer.txt")
