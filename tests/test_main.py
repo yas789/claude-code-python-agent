@@ -37,6 +37,10 @@ def assistant_message(content, tool_calls=None):
     return SimpleNamespace(content=content, tool_calls=tool_calls or [])
 
 
+def final_message_without_tool_calls(content):
+    return SimpleNamespace(content=content)
+
+
 def tool_call(call_id, name, arguments):
     return SimpleNamespace(
         id=call_id,
@@ -134,6 +138,12 @@ class MainTests(unittest.TestCase):
 
         self.assertEqual(main.run_agent(client, "Say hello"), final_answer)
         self.assertEqual(len(client.completions.calls), 1)
+
+    def test_run_agent_handles_final_answer_without_tool_calls_attribute(self):
+        final_answer = fixture_text("final_answer.txt")
+        client = FakeClient([final_message_without_tool_calls(final_answer)])
+
+        self.assertEqual(main.run_agent(client, "Say hello"), final_answer)
 
     def test_run_agent_reads_file_then_returns_generated_answer(self):
         final_answer = fixture_text("readme_summary.txt")

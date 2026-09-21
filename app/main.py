@@ -160,7 +160,7 @@ def execute_tool_call(tool_call):
 
 def append_tool_results(messages, message):
     messages.append(message)
-    for tool_call in message.tool_calls:
+    for tool_call in message.tool_calls or []:
         result = execute_tool_call(tool_call)
         messages.append(
             {
@@ -177,8 +177,9 @@ def run_agent(client, prompt):
     for _ in range(MAX_TOOL_ROUNDS):
         response = create_chat_completion(client, messages)
         message = get_message(response)
+        tool_calls = getattr(message, "tool_calls", None) or []
 
-        if not message.tool_calls:
+        if not tool_calls:
             return message.content
 
         append_tool_results(messages, message)
