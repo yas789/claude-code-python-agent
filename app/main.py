@@ -161,7 +161,11 @@ def execute_tool_call(tool_call):
 def append_tool_results(messages, message):
     messages.append(message)
     for tool_call in message.tool_calls or []:
-        result = execute_tool_call(tool_call)
+        try:
+            result = execute_tool_call(tool_call)
+        except Exception as error:
+            result = f"error: {error}"
+
         messages.append(
             {
                 "role": "tool",

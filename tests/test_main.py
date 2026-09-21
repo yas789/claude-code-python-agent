@@ -223,6 +223,38 @@ class MainTests(unittest.TestCase):
         self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
         self.assertEqual(second_call_messages[2]["content"], "updated example.txt")
 
+    def test_run_agent_returns_tool_errors_to_model(self):
+        final_answer = fixture_text("tool_error_answer.txt")
+
+        with tempfile.TemporaryDirectory() as workspace:
+            file_path = Path(workspace) / "example.txt"
+            file_path.write_text("hello world")
+            client = FakeClient(
+                [
+                    assistant_message(
+                        None,
+                        [
+                            tool_call(
+                                "call_1",
+                                "edit_file",
+                                '{"path": "example.txt", "old_text": "missing", "new_text": "agent"}',
+                            )
+                        ],
+                    ),
+                    assistant_message(final_answer),
+                ]
+            )
+
+            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
+                self.assertEqual(main.run_agent(client, "Update example.txt"), final_answer)
+
+            self.assertEqual(file_path.read_text(), "hello world")
+
+        second_call_messages = client.completions.calls[1]["messages"]
+        self.assertEqual(second_call_messages[2]["role"], "tool")
+        self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
+        self.assertEqual(second_call_messages[2]["content"], "error: old_text not found")
+
 
 if __name__ == "__main__":
     unittest.main()
