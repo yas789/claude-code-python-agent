@@ -84,6 +84,24 @@ class MainTests(unittest.TestCase):
     def test_tool_loop_has_a_maximum_round_limit(self):
         self.assertGreater(main.MAX_TOOL_ROUNDS, 0)
 
+    def test_create_client_requires_api_key(self):
+        with patch.dict("os.environ", {}, clear=True):
+            with self.assertRaisesRegex(RuntimeError, "OPENROUTER_API_KEY is not set"):
+                main.create_client()
+
+    def test_create_client_reads_api_key_at_runtime(self):
+        calls = []
+
+        def fake_openai(api_key, base_url):
+            calls.append({"api_key": api_key, "base_url": base_url})
+            return "client"
+
+        with patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-key"}, clear=True):
+            with patch.object(main, "OpenAI", fake_openai):
+                self.assertEqual(main.create_client(), "client")
+
+        self.assertEqual(calls, [{"api_key": "test-key", "base_url": main.BASE_URL}])
+
     def test_read_file_can_read_workspace_file(self):
         self.assertIn("Build Your own Claude Code", main.read_file("README.md"))
 

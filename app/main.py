@@ -5,7 +5,6 @@ from pathlib import Path
 
 from openai import OpenAI
 
-API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = os.getenv("OPENROUTER_BASE_URL", default="https://openrouter.ai/api/v1")
 MODEL = "anthropic/claude-haiku-4.5"
 MAX_TOOL_ROUNDS = 10
@@ -133,10 +132,11 @@ def parse_args():
 
 
 def create_client():
-    if not API_KEY:
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
         raise RuntimeError("OPENROUTER_API_KEY is not set")
 
-    return OpenAI(api_key=API_KEY, base_url=BASE_URL)
+    return OpenAI(api_key=api_key, base_url=BASE_URL)
 
 
 def create_chat_completion(client, messages):
