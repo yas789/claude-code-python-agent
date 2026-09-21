@@ -48,6 +48,10 @@ def tool_call(call_id, name, arguments):
     )
 
 
+def tool_schema(name):
+    return next(tool for tool in main.TOOLS if tool["function"]["name"] == name)
+
+
 class MainTests(unittest.TestCase):
     def test_read_file_tool_is_advertised_to_the_llm(self):
         tool_names = [tool["function"]["name"] for tool in main.TOOLS]
@@ -55,12 +59,12 @@ class MainTests(unittest.TestCase):
         self.assertIn("read_file", tool_names)
 
     def test_read_file_tool_description_mentions_local_workspace(self):
-        tool = main.TOOLS[0]
+        tool = tool_schema("read_file")
 
         self.assertIn("local workspace", tool["function"]["description"])
 
     def test_read_file_tool_requires_path_argument(self):
-        tool = main.TOOLS[0]
+        tool = tool_schema("read_file")
 
         self.assertEqual(tool["function"]["parameters"]["required"], ["path"])
 
