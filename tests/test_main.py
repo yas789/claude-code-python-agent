@@ -273,6 +273,44 @@ class MainTests(unittest.TestCase):
         self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
         self.assertEqual(second_call_messages[2]["content"], "error: old_text not found")
 
+    def test_run_agent_returns_malformed_tool_arguments_to_model(self):
+        final_answer = fixture_text("tool_error_answer.txt")
+        client = FakeClient(
+            [
+                assistant_message(
+                    None,
+                    [tool_call("call_1", "read_file", '{"path": "README.md"')],
+                ),
+                assistant_message(final_answer),
+            ]
+        )
+
+        self.assertEqual(main.run_agent(client, "Read the README"), final_answer)
+
+        second_call_messages = client.completions.calls[1]["messages"]
+        self.assertEqual(second_call_messages[2]["role"], "tool")
+        self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
+        self.assertIn("error:", second_call_messages[2]["content"])
+
+    def test_run_agent_returns_unknown_tool_errors_to_model(self):
+        final_answer = fixture_text("tool_error_answer.txt")
+        client = FakeClient(
+            [
+                assistant_message(
+                    None,
+                    [tool_call("call_1", "delete_file", '{"path": "README.md"}')],
+                ),
+                assistant_message(final_answer),
+            ]
+        )
+
+        self.assertEqual(main.run_agent(client, "Delete README"), final_answer)
+
+        second_call_messages = client.completions.calls[1]["messages"]
+        self.assertEqual(second_call_messages[2]["role"], "tool")
+        self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
+        self.assertEqual(second_call_messages[2]["content"], "error: unknown tool: delete_file")
+
 
 if __name__ == "__main__":
     unittest.main()
