@@ -9,6 +9,8 @@ BASE_URL = os.getenv("OPENROUTER_BASE_URL", default="https://openrouter.ai/api/v
 MODEL = "anthropic/claude-haiku-4.5"
 MAX_TOOL_ROUNDS = 10
 WORKSPACE_ROOT = Path.cwd().resolve()
+IGNORED_SEARCH_DIRS = {".git", ".venv", "__pycache__"}
+MAX_SEARCH_RESULTS = 20
 
 TOOLS = [
     {
@@ -94,6 +96,28 @@ TOOLS = [
                 "additionalProperties": False,
             },
         },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_files",
+            "description": "Search text files in the local workspace for a query string.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The text to search for.",
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "The relative directory path to search.",
+                    },
+                },
+                "required": ["query", "path"],
+                "additionalProperties": False,
+            },
+        },
     }
 ]
 
@@ -151,11 +175,44 @@ def create_file(path, content):
     return f"created {path}"
 
 
+def search_files(query, path):
+    directory_path = resolve_workspace_path(path, "directory")
+    if not directory_path.is_dir():
+        raise RuntimeError(f"path is not a directory: {path}")
+
+    results = []
+    for file_path in sorted(directory_path.rglob("*")):
+        if len(results) >= MAX_SEARCH_RESULTS:
+            break
+        if not file_path.is_file():
+            continue
+        if any(part in IGNORED_SEARCH_DIRS for part in file_path.relative_to(directory_path).parts):
+            continue
+
+        try:
+            lines = file_path.read_text().splitlines()
+        except UnicodeDecodeError:
+            continue
+
+        for line_number, line in enumerate(lines, start=1):
+            if query in line:
+                relative_path = file_path.relative_to(WORKSPACE_ROOT.resolve())
+                results.append(f"{relative_path}:{line_number}: {line}")
+                if len(results) >= MAX_SEARCH_RESULTS:
+                    break
+
+    if not results:
+        return "no matches"
+
+    return "\n".join(results)
+
+
 TOOL_FUNCTIONS = {
     "read_file": read_file,
     "list_files": list_files,
     "edit_file": edit_file,
     "create_file": create_file,
+    "search_files": search_files,
 }
 
 
