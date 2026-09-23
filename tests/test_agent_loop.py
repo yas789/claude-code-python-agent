@@ -182,6 +182,37 @@ class AgentLoopTests(unittest.TestCase):
         self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
         self.assertEqual(second_call_messages[2]["content"], "error: unknown tool: delete_file")
 
+    def test_run_agent_can_process_create_file_tool_call(self):
+        final_answer = fixture_text("create_file_answer.txt")
+
+        with tempfile.TemporaryDirectory() as workspace:
+            file_path = Path(workspace) / "notes.txt"
+            client = FakeClient(
+                [
+                    assistant_message(
+                        None,
+                        [
+                            tool_call(
+                                "call_1",
+                                "create_file",
+                                '{"path": "notes.txt", "content": "hello agent"}',
+                            )
+                        ],
+                    ),
+                    assistant_message(final_answer),
+                ]
+            )
+
+            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
+                self.assertEqual(main.run_agent(client, "Create notes.txt"), final_answer)
+
+            self.assertEqual(file_path.read_text(), "hello agent")
+
+        second_call_messages = client.completions.calls[1]["messages"]
+        self.assertEqual(second_call_messages[2]["role"], "tool")
+        self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
+        self.assertEqual(second_call_messages[2]["content"], "created notes.txt")
+
 
 if __name__ == "__main__":
     unittest.main()
