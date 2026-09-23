@@ -213,6 +213,25 @@ class AgentLoopTests(unittest.TestCase):
         self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
         self.assertEqual(second_call_messages[2]["content"], "created notes.txt")
 
+    def test_run_agent_can_process_search_files_tool_call(self):
+        final_answer = fixture_text("search_files_answer.txt")
+        client = FakeClient(
+            [
+                assistant_message(
+                    None,
+                    [tool_call("call_1", "search_files", '{"query": "Claude", "path": "."}')],
+                ),
+                assistant_message(final_answer),
+            ]
+        )
+
+        self.assertEqual(main.run_agent(client, "Search for Claude"), final_answer)
+
+        second_call_messages = client.completions.calls[1]["messages"]
+        self.assertEqual(second_call_messages[2]["role"], "tool")
+        self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
+        self.assertIn("README.md", second_call_messages[2]["content"])
+
 
 if __name__ == "__main__":
     unittest.main()
