@@ -72,6 +72,28 @@ TOOLS = [
                 "additionalProperties": False,
             },
         },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_file",
+            "description": "Create a new file in the local workspace without overwriting existing files.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "The relative path of the file to create.",
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "The content to write to the new file.",
+                    },
+                },
+                "required": ["path", "content"],
+                "additionalProperties": False,
+            },
+        },
     }
 ]
 
@@ -118,10 +140,22 @@ def edit_file(path, old_text, new_text):
     return f"updated {path}"
 
 
+def create_file(path, content):
+    file_path = resolve_workspace_path(path, "file")
+    if file_path.exists():
+        raise RuntimeError(f"file already exists: {path}")
+    if not file_path.parent.is_dir():
+        raise RuntimeError(f"parent directory does not exist: {path}")
+
+    file_path.write_text(content)
+    return f"created {path}"
+
+
 TOOL_FUNCTIONS = {
     "read_file": read_file,
     "list_files": list_files,
     "edit_file": edit_file,
+    "create_file": create_file,
 }
 
 

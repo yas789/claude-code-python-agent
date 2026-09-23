@@ -73,6 +73,39 @@ class ToolTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "path is not a file"):
                     main.edit_file(".", "old", "new")
 
+    def test_create_file_writes_new_file(self):
+        with tempfile.TemporaryDirectory() as workspace:
+            file_path = Path(workspace) / "created.txt"
+
+            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
+                result = main.create_file("created.txt", "hello agent")
+
+            self.assertEqual(result, "created created.txt")
+            self.assertEqual(file_path.read_text(), "hello agent")
+
+    def test_create_file_rejects_existing_file(self):
+        with tempfile.TemporaryDirectory() as workspace:
+            file_path = Path(workspace) / "existing.txt"
+            file_path.write_text("already here")
+
+            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
+                with self.assertRaisesRegex(RuntimeError, "file already exists"):
+                    main.create_file("existing.txt", "new content")
+
+            self.assertEqual(file_path.read_text(), "already here")
+
+    def test_create_file_rejects_parent_directory_escape(self):
+        with tempfile.TemporaryDirectory() as workspace:
+            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
+                with self.assertRaisesRegex(RuntimeError, "outside workspace"):
+                    main.create_file("../created.txt", "hello")
+
+    def test_create_file_rejects_missing_parent_directory(self):
+        with tempfile.TemporaryDirectory() as workspace:
+            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
+                with self.assertRaisesRegex(RuntimeError, "parent directory does not exist"):
+                    main.create_file("missing/created.txt", "hello")
+
 
 if __name__ == "__main__":
     unittest.main()
