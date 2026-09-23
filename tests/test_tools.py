@@ -106,6 +106,60 @@ class ToolTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "parent directory does not exist"):
                     main.create_file("missing/created.txt", "hello")
 
+    def test_search_files_returns_matching_lines(self):
+        with tempfile.TemporaryDirectory() as workspace:
+            file_path = Path(workspace) / "example.txt"
+            file_path.write_text("alpha\nbeta target\ngamma target")
+
+            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
+                result = main.search_files("target", ".")
+
+            self.assertIn("example.txt:2: beta target", result)
+            self.assertIn("example.txt:3: gamma target", result)
+
+    def test_search_files_returns_no_matches(self):
+        with tempfile.TemporaryDirectory() as workspace:
+            file_path = Path(workspace) / "example.txt"
+            file_path.write_text("alpha")
+
+            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
+                self.assertEqual(main.search_files("missing", "."), "no matches")
+
+    def test_search_files_rejects_parent_directory_escape(self):
+        with tempfile.TemporaryDirectory() as workspace:
+            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
+                with self.assertRaisesRegex(RuntimeError, "outside workspace"):
+                    main.search_files("target", "..")
+
+    def test_search_files_rejects_file_path(self):
+        with tempfile.TemporaryDirectory() as workspace:
+            file_path = Path(workspace) / "example.txt"
+            file_path.write_text("target")
+
+            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
+                with self.assertRaisesRegex(RuntimeError, "path is not a directory"):
+                    main.search_files("target", "example.txt")
+
+    def test_search_files_ignores_configured_directories(self):
+        with tempfile.TemporaryDirectory() as workspace:
+            ignored_path = Path(workspace) / "__pycache__"
+            ignored_path.mkdir()
+            (ignored_path / "ignored.txt").write_text("target")
+
+            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
+                self.assertEqual(main.search_files("target", "."), "no matches")
+
+    def test_search_files_limits_results(self):
+        with tempfile.TemporaryDirectory() as workspace:
+            for index in range(main.MAX_SEARCH_RESULTS + 5):
+                file_path = Path(workspace) / f"example_{index}.txt"
+                file_path.write_text("target")
+
+            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
+                result = main.search_files("target", ".")
+
+            self.assertEqual(len(result.splitlines()), main.MAX_SEARCH_RESULTS)
+
 
 if __name__ == "__main__":
     unittest.main()
