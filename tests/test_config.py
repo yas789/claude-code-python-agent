@@ -8,6 +8,13 @@ from app import main
 from tests.helpers import fixture_text
 
 
+def assert_parse_error(test_case, argv):
+    with patch("sys.argv", argv):
+        with patch("sys.stderr", StringIO()):
+            with test_case.assertRaises(SystemExit):
+                main.parse_args()
+
+
 class ConfigTests(unittest.TestCase):
     def test_tool_loop_has_a_maximum_round_limit(self):
         self.assertGreater(main.MAX_TOOL_ROUNDS, 0)
@@ -52,9 +59,7 @@ class ConfigTests(unittest.TestCase):
         self.assertTrue(args.quiet)
 
     def test_parse_args_rejects_verbose_and_quiet_together(self):
-        with patch("sys.argv", ["agent", "--prompt", "hello", "--verbose", "--quiet"]):
-            with self.assertRaises(SystemExit):
-                main.parse_args()
+        assert_parse_error(self, ["agent", "--prompt", "hello", "--verbose", "--quiet"])
 
     def test_parse_args_accepts_max_tool_rounds(self):
         with patch("sys.argv", ["agent", "--prompt", "hello", "--max-tool-rounds", "3"]):
@@ -63,9 +68,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(args.max_tool_rounds, 3)
 
     def test_parse_args_rejects_zero_max_tool_rounds(self):
-        with patch("sys.argv", ["agent", "--prompt", "hello", "--max-tool-rounds", "0"]):
-            with self.assertRaises(SystemExit):
-                main.parse_args()
+        assert_parse_error(self, ["agent", "--prompt", "hello", "--max-tool-rounds", "0"])
 
     def test_parse_args_accepts_model(self):
         with patch("sys.argv", ["agent", "--prompt", "hello", "--model", "test/model"]):
@@ -80,9 +83,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(args.workspace, Path(".").resolve())
 
     def test_parse_args_rejects_missing_workspace(self):
-        with patch("sys.argv", ["agent", "--prompt", "hello", "--workspace", "missing"]):
-            with self.assertRaises(SystemExit):
-                main.parse_args()
+        assert_parse_error(self, ["agent", "--prompt", "hello", "--workspace", "missing"])
 
     def test_parse_args_help_describes_agent_options(self):
         stdout = StringIO()
