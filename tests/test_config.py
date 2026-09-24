@@ -43,6 +43,17 @@ class ConfigTests(unittest.TestCase):
 
         self.assertTrue(args.verbose)
 
+    def test_parse_args_accepts_quiet_flag(self):
+        with patch("sys.argv", ["agent", "--prompt", "hello", "--quiet"]):
+            args = main.parse_args()
+
+        self.assertTrue(args.quiet)
+
+    def test_parse_args_rejects_verbose_and_quiet_together(self):
+        with patch("sys.argv", ["agent", "--prompt", "hello", "--verbose", "--quiet"]):
+            with self.assertRaises(SystemExit):
+                main.parse_args()
+
 
 if __name__ == "__main__":
     unittest.main()

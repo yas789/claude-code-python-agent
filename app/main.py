@@ -221,7 +221,13 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--prompt", required=True)
     parser.add_argument("--verbose", action="store_true")
-    return parser.parse_args()
+    parser.add_argument("--quiet", action="store_true")
+    args = parser.parse_args()
+
+    if args.verbose and args.quiet:
+        parser.error("--verbose and --quiet cannot be used together")
+
+    return args
 
 
 def create_client():
