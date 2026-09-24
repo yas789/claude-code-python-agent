@@ -267,14 +267,26 @@ def summarize_tool_result(result):
     return "ok"
 
 
+def format_tool_call(tool_call):
+    try:
+        arguments = json.loads(tool_call.function.arguments)
+    except json.JSONDecodeError:
+        return f"Using {tool_call.function.name} with invalid JSON arguments"
+
+    formatted_arguments = " ".join(
+        f"{name}={value}" for name, value in sorted(arguments.items())
+    )
+    if not formatted_arguments:
+        return f"Using {tool_call.function.name}"
+
+    return f"Using {tool_call.function.name} {formatted_arguments}"
+
+
 def append_tool_results(messages, message, verbose=False):
     messages.append(message)
     for tool_call in message.tool_calls or []:
         if verbose:
-            print(
-                f"Tool: {tool_call.function.name} {tool_call.function.arguments}",
-                file=sys.stderr,
-            )
+            print(format_tool_call(tool_call), file=sys.stderr)
 
         try:
             result = execute_tool_call(tool_call)

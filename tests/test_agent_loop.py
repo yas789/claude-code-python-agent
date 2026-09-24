@@ -249,8 +249,13 @@ class AgentLoopTests(unittest.TestCase):
         with patch("sys.stderr", stderr):
             self.assertEqual(main.run_agent(client, "Read README", verbose=True), final_answer)
 
-        self.assertIn('Tool: read_file {"path": "README.md"}', stderr.getvalue())
+        self.assertIn("Using read_file path=README.md", stderr.getvalue())
         self.assertIn("Tool result: ok", stderr.getvalue())
+
+    def test_format_tool_call_reports_invalid_json(self):
+        formatted = main.format_tool_call(tool_call("call_1", "read_file", "{"))
+
+        self.assertEqual(formatted, "Using read_file with invalid JSON arguments")
 
     def test_summarize_tool_result_reports_line_count(self):
         self.assertEqual(main.summarize_tool_result("one\ntwo"), "ok (2 lines)")
