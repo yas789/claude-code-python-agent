@@ -279,6 +279,14 @@ class AgentLoopTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "exceeded maximum tool call rounds"):
             main.run_agent(client, "Read README", max_tool_rounds=1)
 
+    def test_run_agent_passes_selected_model_to_chat_completion(self):
+        final_answer = fixture_text("final_answer.txt")
+        client = FakeClient([assistant_message(final_answer)])
+
+        self.assertEqual(main.run_agent(client, "Say hello", model="test/model"), final_answer)
+
+        self.assertEqual(client.completions.calls[0]["model"], "test/model")
+
 
 if __name__ == "__main__":
     unittest.main()

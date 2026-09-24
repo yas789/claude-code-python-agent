@@ -65,6 +65,12 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 main.parse_args()
 
+    def test_parse_args_accepts_model(self):
+        with patch("sys.argv", ["agent", "--prompt", "hello", "--model", "test/model"]):
+            args = main.parse_args()
+
+        self.assertEqual(args.model, "test/model")
+
 
 if __name__ == "__main__":
     unittest.main()
