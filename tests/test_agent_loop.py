@@ -250,6 +250,16 @@ class AgentLoopTests(unittest.TestCase):
             self.assertEqual(main.run_agent(client, "Read README", verbose=True), final_answer)
 
         self.assertIn('Tool: read_file {"path": "README.md"}', stderr.getvalue())
+        self.assertIn("Tool result: ok", stderr.getvalue())
+
+    def test_summarize_tool_result_reports_line_count(self):
+        self.assertEqual(main.summarize_tool_result("one\ntwo"), "ok (2 lines)")
+
+    def test_summarize_tool_result_preserves_errors(self):
+        self.assertEqual(
+            main.summarize_tool_result("error: old_text not found"),
+            "error: old_text not found",
+        )
 
 
 if __name__ == "__main__":

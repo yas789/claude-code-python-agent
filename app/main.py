@@ -256,6 +256,17 @@ def execute_tool_call(tool_call):
     return TOOL_FUNCTIONS[tool_name](**arguments)
 
 
+def summarize_tool_result(result):
+    if result.startswith("error:"):
+        return result
+
+    line_count = len(result.splitlines())
+    if line_count > 1:
+        return f"ok ({line_count} lines)"
+
+    return "ok"
+
+
 def append_tool_results(messages, message, verbose=False):
     messages.append(message)
     for tool_call in message.tool_calls or []:
@@ -269,6 +280,9 @@ def append_tool_results(messages, message, verbose=False):
             result = execute_tool_call(tool_call)
         except Exception as error:
             result = f"error: {error}"
+
+        if verbose:
+            print(f"Tool result: {summarize_tool_result(result)}", file=sys.stderr)
 
         messages.append(
             {
