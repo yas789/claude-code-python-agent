@@ -224,12 +224,17 @@ def parse_args():
     parser.add_argument("--quiet", action="store_true")
     parser.add_argument("--max-tool-rounds", type=int, default=MAX_TOOL_ROUNDS)
     parser.add_argument("--model", default=MODEL)
+    parser.add_argument("--workspace", default=str(WORKSPACE_ROOT))
     args = parser.parse_args()
 
     if args.verbose and args.quiet:
         parser.error("--verbose and --quiet cannot be used together")
     if args.max_tool_rounds < 1:
         parser.error("--max-tool-rounds must be at least 1")
+
+    args.workspace = Path(args.workspace).resolve()
+    if not args.workspace.is_dir():
+        parser.error("--workspace must be an existing directory")
 
     return args
 
@@ -332,7 +337,10 @@ def run_agent(client, prompt, verbose=False, max_tool_rounds=MAX_TOOL_ROUNDS, mo
 
 
 def main():
+    global WORKSPACE_ROOT
+
     args = parse_args()
+    WORKSPACE_ROOT = args.workspace
     client = create_client()
 
     print(run_agent(client, args.prompt, args.verbose, args.max_tool_rounds, args.model))

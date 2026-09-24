@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from app import main
@@ -70,6 +71,17 @@ class ConfigTests(unittest.TestCase):
             args = main.parse_args()
 
         self.assertEqual(args.model, "test/model")
+
+    def test_parse_args_accepts_workspace(self):
+        with patch("sys.argv", ["agent", "--prompt", "hello", "--workspace", "."]):
+            args = main.parse_args()
+
+        self.assertEqual(args.workspace, Path(".").resolve())
+
+    def test_parse_args_rejects_missing_workspace(self):
+        with patch("sys.argv", ["agent", "--prompt", "hello", "--workspace", "missing"]):
+            with self.assertRaises(SystemExit):
+                main.parse_args()
 
 
 if __name__ == "__main__":
