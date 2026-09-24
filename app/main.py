@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import sys
 
 from openai import OpenAI
 
@@ -255,9 +256,15 @@ def execute_tool_call(tool_call):
     return TOOL_FUNCTIONS[tool_name](**arguments)
 
 
-def append_tool_results(messages, message):
+def append_tool_results(messages, message, verbose=False):
     messages.append(message)
     for tool_call in message.tool_calls or []:
+        if verbose:
+            print(
+                f"Tool: {tool_call.function.name} {tool_call.function.arguments}",
+                file=sys.stderr,
+            )
+
         try:
             result = execute_tool_call(tool_call)
         except Exception as error:
@@ -272,7 +279,7 @@ def append_tool_results(messages, message):
         )
 
 
-def run_agent(client, prompt):
+def run_agent(client, prompt, verbose=False):
     messages = [{"role": "user", "content": prompt}]
 
     for _ in range(MAX_TOOL_ROUNDS):
@@ -283,7 +290,7 @@ def run_agent(client, prompt):
         if not tool_calls:
             return message.content
 
-        append_tool_results(messages, message)
+        append_tool_results(messages, message, verbose)
 
     raise RuntimeError("exceeded maximum tool call rounds")
 
@@ -292,7 +299,7 @@ def main():
     args = parse_args()
     client = create_client()
 
-    print(run_agent(client, args.prompt))
+    print(run_agent(client, args.prompt, args.verbose))
 
 
 if __name__ == "__main__":

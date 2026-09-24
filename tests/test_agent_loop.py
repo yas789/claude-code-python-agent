@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -231,6 +232,24 @@ class AgentLoopTests(unittest.TestCase):
         self.assertEqual(second_call_messages[2]["role"], "tool")
         self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
         self.assertIn("README.md", second_call_messages[2]["content"])
+
+    def test_run_agent_logs_tool_calls_in_verbose_mode(self):
+        final_answer = fixture_text("readme_summary.txt")
+        client = FakeClient(
+            [
+                assistant_message(
+                    None,
+                    [tool_call("call_1", "read_file", '{"path": "README.md"}')],
+                ),
+                assistant_message(final_answer),
+            ]
+        )
+        stderr = StringIO()
+
+        with patch("sys.stderr", stderr):
+            self.assertEqual(main.run_agent(client, "Read README", verbose=True), final_answer)
+
+        self.assertIn('Tool: read_file {"path": "README.md"}', stderr.getvalue())
 
 
 if __name__ == "__main__":
