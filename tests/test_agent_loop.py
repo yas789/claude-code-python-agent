@@ -47,7 +47,7 @@ class AgentLoopTests(unittest.TestCase):
         self.assertEqual(second_call_messages[1].tool_calls[0].id, "call_1")
         self.assertEqual(second_call_messages[2]["role"], "tool")
         self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
-        self.assertIn("Build Your own Claude Code", second_call_messages[2]["content"])
+        self.assertIn("Claude Code Python Agent", second_call_messages[2]["content"])
 
     def test_run_agent_can_process_multiple_tool_rounds(self):
         final_answer = fixture_text("workspace_listing_answer.txt")
@@ -79,7 +79,7 @@ class AgentLoopTests(unittest.TestCase):
             [message["tool_call_id"] for message in tool_results], ["call_1", "call_2"]
         )
         self.assertIn("README.md", tool_results[0]["content"])
-        self.assertIn("Build Your own Claude Code", tool_results[1]["content"])
+        self.assertIn("Claude Code Python Agent", tool_results[1]["content"])
 
     def test_run_agent_can_process_edit_file_tool_call(self):
         final_answer = fixture_text("edit_file_answer.txt")
