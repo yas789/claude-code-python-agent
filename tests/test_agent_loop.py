@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -46,7 +47,7 @@ class AgentLoopTests(unittest.TestCase):
         self.assertEqual(second_call_messages[1].tool_calls[0].id, "call_1")
         self.assertEqual(second_call_messages[2]["role"], "tool")
         self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
-        self.assertIn("Build Your own Claude Code", second_call_messages[2]["content"])
+        self.assertIn("Claude Code Python Agent", second_call_messages[2]["content"])
 
     def test_run_agent_can_process_multiple_tool_rounds(self):
         final_answer = fixture_text("workspace_listing_answer.txt")
@@ -78,7 +79,7 @@ class AgentLoopTests(unittest.TestCase):
             [message["tool_call_id"] for message in tool_results], ["call_1", "call_2"]
         )
         self.assertIn("README.md", tool_results[0]["content"])
-        self.assertIn("Build Your own Claude Code", tool_results[1]["content"])
+        self.assertIn("Claude Code Python Agent", tool_results[1]["content"])
 
     def test_run_agent_can_process_edit_file_tool_call(self):
         final_answer = fixture_text("edit_file_answer.txt")
@@ -231,6 +232,60 @@ class AgentLoopTests(unittest.TestCase):
         self.assertEqual(second_call_messages[2]["role"], "tool")
         self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
         self.assertIn("README.md", second_call_messages[2]["content"])
+
+    def test_run_agent_logs_tool_calls_in_verbose_mode(self):
+        final_answer = fixture_text("readme_summary.txt")
+        client = FakeClient(
+            [
+                assistant_message(
+                    None,
+                    [tool_call("call_1", "read_file", '{"path": "README.md"}')],
+                ),
+                assistant_message(final_answer),
+            ]
+        )
+        stderr = StringIO()
+
+        with patch("sys.stderr", stderr):
+            self.assertEqual(main.run_agent(client, "Read README", verbose=True), final_answer)
+
+        self.assertIn("Using read_file path=README.md", stderr.getvalue())
+        self.assertIn("Tool result: ok", stderr.getvalue())
+
+    def test_format_tool_call_reports_invalid_json(self):
+        formatted = main.format_tool_call(tool_call("call_1", "read_file", "{"))
+
+        self.assertEqual(formatted, "Using read_file with invalid JSON arguments")
+
+    def test_summarize_tool_result_reports_line_count(self):
+        self.assertEqual(main.summarize_tool_result("one\ntwo"), "ok (2 lines)")
+
+    def test_summarize_tool_result_preserves_errors(self):
+        self.assertEqual(
+            main.summarize_tool_result("error: old_text not found"),
+            "error: old_text not found",
+        )
+
+    def test_run_agent_respects_max_tool_rounds(self):
+        client = FakeClient(
+            [
+                assistant_message(
+                    None,
+                    [tool_call("call_1", "read_file", '{"path": "README.md"}')],
+                )
+            ]
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "exceeded maximum tool call rounds"):
+            main.run_agent(client, "Read README", max_tool_rounds=1)
+
+    def test_run_agent_passes_selected_model_to_chat_completion(self):
+        final_answer = fixture_text("final_answer.txt")
+        client = FakeClient([assistant_message(final_answer)])
+
+        self.assertEqual(main.run_agent(client, "Say hello", model="test/model"), final_answer)
+
+        self.assertEqual(client.completions.calls[0]["model"], "test/model")
 
 
 if __name__ == "__main__":
