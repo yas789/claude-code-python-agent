@@ -219,6 +219,7 @@ TOOL_FUNCTIONS = {
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--prompt", required=True)
+    parser.add_argument("--verbose", action="store_true")
     return parser.parse_args()
 
 

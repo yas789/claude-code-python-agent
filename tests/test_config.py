@@ -37,6 +37,12 @@ class ConfigTests(unittest.TestCase):
 
         self.assertEqual(args.prompt, "hello")
 
+    def test_parse_args_accepts_verbose_flag(self):
+        with patch("sys.argv", ["agent", "--prompt", "hello", "--verbose"]):
+            args = main.parse_args()
+
+        self.assertTrue(args.verbose)
+
 
 if __name__ == "__main__":
     unittest.main()
