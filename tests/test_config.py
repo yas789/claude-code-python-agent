@@ -31,6 +31,12 @@ class ConfigTests(unittest.TestCase):
     def test_fixture_text_reads_generated_answers(self):
         self.assertEqual(fixture_text("final_answer.txt"), "I can help with that.")
 
+    def test_parse_args_accepts_prompt_alias(self):
+        with patch("sys.argv", ["agent", "--prompt", "hello"]):
+            args = main.parse_args()
+
+        self.assertEqual(args.prompt, "hello")
+
 
 if __name__ == "__main__":
     unittest.main()

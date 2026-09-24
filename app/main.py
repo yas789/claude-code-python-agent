@@ -218,7 +218,7 @@ TOOL_FUNCTIONS = {
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-p", required=True)
+    parser.add_argument("-p", "--prompt", required=True)
     return parser.parse_args()
 
 
@@ -291,7 +291,7 @@ def main():
     args = parse_args()
     client = create_client()
 
-    print(run_agent(client, args.p))
+    print(run_agent(client, args.prompt))
 
 
 if __name__ == "__main__":
