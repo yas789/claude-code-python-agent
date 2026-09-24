@@ -266,6 +266,19 @@ class AgentLoopTests(unittest.TestCase):
             "error: old_text not found",
         )
 
+    def test_run_agent_respects_max_tool_rounds(self):
+        client = FakeClient(
+            [
+                assistant_message(
+                    None,
+                    [tool_call("call_1", "read_file", '{"path": "README.md"}')],
+                )
+            ]
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "exceeded maximum tool call rounds"):
+            main.run_agent(client, "Read README", max_tool_rounds=1)
+
 
 if __name__ == "__main__":
     unittest.main()

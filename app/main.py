@@ -222,10 +222,13 @@ def parse_args():
     parser.add_argument("-p", "--prompt", required=True)
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--quiet", action="store_true")
+    parser.add_argument("--max-tool-rounds", type=int, default=MAX_TOOL_ROUNDS)
     args = parser.parse_args()
 
     if args.verbose and args.quiet:
         parser.error("--verbose and --quiet cannot be used together")
+    if args.max_tool_rounds < 1:
+        parser.error("--max-tool-rounds must be at least 1")
 
     return args
 
@@ -311,10 +314,10 @@ def append_tool_results(messages, message, verbose=False):
         )
 
 
-def run_agent(client, prompt, verbose=False):
+def run_agent(client, prompt, verbose=False, max_tool_rounds=MAX_TOOL_ROUNDS):
     messages = [{"role": "user", "content": prompt}]
 
-    for _ in range(MAX_TOOL_ROUNDS):
+    for _ in range(max_tool_rounds):
         response = create_chat_completion(client, messages)
         message = get_message(response)
         tool_calls = getattr(message, "tool_calls", None) or []
@@ -331,7 +334,7 @@ def main():
     args = parse_args()
     client = create_client()
 
-    print(run_agent(client, args.prompt, args.verbose))
+    print(run_agent(client, args.prompt, args.verbose, args.max_tool_rounds))
 
 
 if __name__ == "__main__":

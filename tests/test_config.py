@@ -54,6 +54,17 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 main.parse_args()
 
+    def test_parse_args_accepts_max_tool_rounds(self):
+        with patch("sys.argv", ["agent", "--prompt", "hello", "--max-tool-rounds", "3"]):
+            args = main.parse_args()
+
+        self.assertEqual(args.max_tool_rounds, 3)
+
+    def test_parse_args_rejects_zero_max_tool_rounds(self):
+        with patch("sys.argv", ["agent", "--prompt", "hello", "--max-tool-rounds", "0"]):
+            with self.assertRaises(SystemExit):
+                main.parse_args()
+
 
 if __name__ == "__main__":
     unittest.main()
