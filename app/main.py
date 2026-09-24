@@ -218,13 +218,24 @@ TOOL_FUNCTIONS = {
 
 
 def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-p", "--prompt", required=True)
-    parser.add_argument("--verbose", action="store_true")
-    parser.add_argument("--quiet", action="store_true")
-    parser.add_argument("--max-tool-rounds", type=int, default=MAX_TOOL_ROUNDS)
-    parser.add_argument("--model", default=MODEL)
-    parser.add_argument("--workspace", default=str(WORKSPACE_ROOT))
+    parser = argparse.ArgumentParser(
+        description="Run a local coding agent with OpenAI-compatible tool calls."
+    )
+    parser.add_argument("-p", "--prompt", required=True, help="Prompt to send to the agent.")
+    parser.add_argument("--verbose", action="store_true", help="Print tool activity to stderr.")
+    parser.add_argument("--quiet", action="store_true", help="Reserve minimal output mode for scripts.")
+    parser.add_argument(
+        "--max-tool-rounds",
+        type=int,
+        default=MAX_TOOL_ROUNDS,
+        help="Maximum number of tool-call rounds before stopping.",
+    )
+    parser.add_argument("--model", default=MODEL, help="OpenRouter model name to use.")
+    parser.add_argument(
+        "--workspace",
+        default=str(WORKSPACE_ROOT),
+        help="Workspace directory the agent can inspect and edit.",
+    )
     args = parser.parse_args()
 
     if args.verbose and args.quiet:

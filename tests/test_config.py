@@ -1,4 +1,5 @@
 import unittest
+from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -82,6 +83,19 @@ class ConfigTests(unittest.TestCase):
         with patch("sys.argv", ["agent", "--prompt", "hello", "--workspace", "missing"]):
             with self.assertRaises(SystemExit):
                 main.parse_args()
+
+    def test_parse_args_help_describes_agent_options(self):
+        stdout = StringIO()
+
+        with patch("sys.argv", ["agent", "--help"]):
+            with patch("sys.stdout", stdout):
+                with self.assertRaises(SystemExit):
+                    main.parse_args()
+
+        help_text = stdout.getvalue()
+        self.assertIn("Run a local coding agent", help_text)
+        self.assertIn("--workspace", help_text)
+        self.assertIn("--max-tool-rounds", help_text)
 
 
 if __name__ == "__main__":
