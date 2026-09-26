@@ -1,34 +1,89 @@
-[![progress-banner](https://backend.codecrafters.io/progress/claude-code/136aab4b-0f00-42a1-9382-d605a34d5e50)](https://app.codecrafters.io/users/yas789?r=2qF)
+# Claude Code Python Agent
 
-This is a starting point for Python solutions to the
-["Build Your own Claude Code" Challenge](https://codecrafters.io/challenges/claude-code).
+A small command-line coding agent that talks to an OpenAI-compatible API and lets the model inspect and modify the local workspace through tools.
 
-Claude Code is an AI coding assistant that uses Large Language Models (LLMs) to
-understand code and perform actions through tool calls. In this challenge,
-you'll build your own Claude Code from scratch by implementing an LLM-powered
-coding assistant.
+## Setup
 
-Along the way you'll learn about HTTP RESTful APIs, OpenAI-compatible tool
-calling, agent loop, and how to integrate multiple tools into an AI assistant.
-
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
-
-# Passing the first stage
-
-The entry point for your `claude-code` implementation is in `app/main.py`. Study
-and uncomment the relevant code, and submit to pass the first stage:
+Set your OpenRouter API key:
 
 ```sh
-codecrafters submit
+export OPENROUTER_API_KEY="your-key"
 ```
 
-# Stage 2 & beyond
+Optional:
 
-Note: This section is for stages 2 and beyond.
+```sh
+export OPENROUTER_BASE_URL="https://openrouter.ai/api/v1"
+```
 
-1. Ensure you have `uv` installed locally.
-2. Run `./your_program.sh` to run your program, which is implemented in
-   `app/main.py`.
-3. Run `codecrafters submit` to submit your solution to CodeCrafters. Test
-   output will be streamed to your terminal.
+## Usage
+
+Run one prompt:
+
+```sh
+./your_program.sh --prompt "summarize this repository"
+```
+
+The short `-p` flag still works:
+
+```sh
+./your_program.sh -p "find where tools are defined"
+```
+
+Show tool activity:
+
+```sh
+./your_program.sh --verbose --prompt "read the README and list available tools"
+```
+
+Use a different model:
+
+```sh
+./your_program.sh --model anthropic/claude-haiku-4.5 --prompt "inspect app/main.py"
+```
+
+Limit tool-call rounds:
+
+```sh
+./your_program.sh --max-tool-rounds 3 --prompt "summarize the codebase"
+```
+
+Choose a workspace:
+
+```sh
+./your_program.sh --workspace /path/to/project --prompt "search for TODOs"
+```
+
+## Tools
+
+The model can request these tools:
+
+- `read_file(path)` reads a file inside the workspace.
+- `list_files(path)` lists a directory inside the workspace.
+- `edit_file(path, old_text, new_text)` replaces one exact text match.
+- `create_file(path, content)` creates a new file without overwriting.
+- `search_files(query, path)` searches text files in a workspace directory.
+
+Tool paths are restricted to the configured workspace.
+
+## Development
+
+Run syntax checks:
+
+```sh
+python3 -m py_compile app/main.py
+```
+
+Run tests:
+
+```sh
+python3 -m unittest discover -s tests -p 'test_*.py'
+```
+
+## Branch Flow
+
+- `main` is the stable branch.
+- `dev` is the development integration branch.
+- `feature/*` branches are used for focused changes.
+
+GitHub Actions runs tests for pushes to `main`, `dev`, and `feature/**`, and for pull requests into `main` or `dev`.
