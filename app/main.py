@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import sys
 
 from openai import OpenAI
 
@@ -217,9 +218,36 @@ TOOL_FUNCTIONS = {
 
 
 def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-p", required=True)
-    return parser.parse_args()
+    parser = argparse.ArgumentParser(
+        description="Run a local coding agent with OpenAI-compatible tool calls."
+    )
+    parser.add_argument("-p", "--prompt", required=True, help="Prompt to send to the agent.")
+    parser.add_argument("--verbose", action="store_true", help="Print tool activity to stderr.")
+    parser.add_argument("--quiet", action="store_true", help="Reserve minimal output mode for scripts.")
+    parser.add_argument(
+        "--max-tool-rounds",
+        type=int,
+        default=MAX_TOOL_ROUNDS,
+        help="Maximum number of tool-call rounds before stopping.",
+    )
+    parser.add_argument("--model", default=MODEL, help="OpenRouter model name to use.")
+    parser.add_argument(
+        "--workspace",
+        default=str(WORKSPACE_ROOT),
+        help="Workspace directory the agent can inspect and edit.",
+    )
+    args = parser.parse_args()
+
+    if args.verbose and args.quiet:
+        parser.error("--verbose and --quiet cannot be used together")
+    if args.max_tool_rounds < 1:
+        parser.error("--max-tool-rounds must be at least 1")
+
+    args.workspace = Path(args.workspace).resolve()
+    if not args.workspace.is_dir():
+        parser.error("--workspace must be an existing directory")
+
+    return args
 
 
 def create_client():
@@ -230,9 +258,9 @@ def create_client():
     return OpenAI(api_key=api_key, base_url=BASE_URL)
 
 
-def create_chat_completion(client, messages):
+def create_chat_completion(client, messages, model=MODEL):
     return client.chat.completions.create(
-        model=MODEL,
+        model=model,
         messages=messages,
         tools=TOOLS,
     )
@@ -254,13 +282,45 @@ def execute_tool_call(tool_call):
     return TOOL_FUNCTIONS[tool_name](**arguments)
 
 
-def append_tool_results(messages, message):
+def summarize_tool_result(result):
+    if result.startswith("error:"):
+        return result
+
+    line_count = len(result.splitlines())
+    if line_count > 1:
+        return f"ok ({line_count} lines)"
+
+    return "ok"
+
+
+def format_tool_call(tool_call):
+    try:
+        arguments = json.loads(tool_call.function.arguments)
+    except json.JSONDecodeError:
+        return f"Using {tool_call.function.name} with invalid JSON arguments"
+
+    formatted_arguments = " ".join(
+        f"{name}={value}" for name, value in sorted(arguments.items())
+    )
+    if not formatted_arguments:
+        return f"Using {tool_call.function.name}"
+
+    return f"Using {tool_call.function.name} {formatted_arguments}"
+
+
+def append_tool_results(messages, message, verbose=False):
     messages.append(message)
     for tool_call in message.tool_calls or []:
+        if verbose:
+            print(format_tool_call(tool_call), file=sys.stderr)
+
         try:
             result = execute_tool_call(tool_call)
         except Exception as error:
             result = f"error: {error}"
+
+        if verbose:
+            print(f"Tool result: {summarize_tool_result(result)}", file=sys.stderr)
 
         messages.append(
             {
@@ -271,27 +331,30 @@ def append_tool_results(messages, message):
         )
 
 
-def run_agent(client, prompt):
+def run_agent(client, prompt, verbose=False, max_tool_rounds=MAX_TOOL_ROUNDS, model=MODEL):
     messages = [{"role": "user", "content": prompt}]
 
-    for _ in range(MAX_TOOL_ROUNDS):
-        response = create_chat_completion(client, messages)
+    for _ in range(max_tool_rounds):
+        response = create_chat_completion(client, messages, model)
         message = get_message(response)
         tool_calls = getattr(message, "tool_calls", None) or []
 
         if not tool_calls:
             return message.content
 
-        append_tool_results(messages, message)
+        append_tool_results(messages, message, verbose)
 
     raise RuntimeError("exceeded maximum tool call rounds")
 
 
 def main():
+    global WORKSPACE_ROOT
+
     args = parse_args()
+    WORKSPACE_ROOT = args.workspace
     client = create_client()
 
-    print(run_agent(client, args.p))
+    print(run_agent(client, args.prompt, args.verbose, args.max_tool_rounds, args.model))
 
 
 if __name__ == "__main__":

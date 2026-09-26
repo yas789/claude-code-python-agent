@@ -8,7 +8,7 @@ from app import main
 
 class ToolTests(unittest.TestCase):
     def test_read_file_can_read_workspace_file(self):
-        self.assertIn("Build Your own Claude Code", main.read_file("README.md"))
+        self.assertIn("Claude Code Python Agent", main.read_file("README.md"))
 
     def test_read_file_rejects_parent_directory_escape(self):
         with self.assertRaisesRegex(RuntimeError, "outside workspace"):
