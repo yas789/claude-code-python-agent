@@ -19,6 +19,19 @@ class StreamingReader(StringIO):
         return super().read(size)
 
 
+class BoundedReader(StreamingReader):
+    def __init__(self, content, max_chars):
+        super().__init__(content)
+        self.max_chars = max_chars
+        self.requested_sizes = []
+
+    def readline(self, size=-1):
+        if not 0 < size <= self.max_chars + 1:
+            raise AssertionError("line reads must have a bounded size")
+        self.requested_sizes.append(size)
+        return super().readline(size)
+
+
 class FileReadTests(unittest.TestCase):
     def setUp(self):
         self.workspace = tempfile.TemporaryDirectory()
@@ -123,3 +136,18 @@ class FileReadTests(unittest.TestCase):
             result = self.read(limit=1)
         self.assertEqual(result["content"], "alpha\n")
         self.assertEqual(result["next_offset"], 2)
+
+    def test_huge_selected_line_uses_bounded_reads(self):
+        reader = BoundedReader("x" * 100000, max_chars=20)
+        with patch.object(main, "open", return_value=reader, create=True):
+            with self.assertRaisesRegex(RuntimeError, "line 1 exceeds max_chars=20"):
+                self.read(max_chars=20)
+        self.assertEqual(reader.requested_sizes, [21])
+
+    def test_remaining_character_budget_bounds_next_line_read(self):
+        reader = BoundedReader("alpha\n" + "x" * 100000, max_chars=8)
+        with patch.object(main, "open", return_value=reader, create=True):
+            result = self.read(max_chars=8)
+        self.assertEqual(result["content"], "alpha\n")
+        self.assertEqual(result["next_offset"], 2)
+        self.assertEqual(reader.requested_sizes, [9, 3])

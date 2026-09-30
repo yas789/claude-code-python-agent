@@ -179,7 +179,7 @@ def read_file(path, offset=1, limit=DEFAULT_READ_LINES, max_chars=DEFAULT_READ_C
         character_count = 0
         truncated = False
         for _ in range(limit):
-            line = file.readline()
+            line = file.readline(max_chars - character_count + 1)
             if not line:
                 break
             if character_count + len(line) > max_chars:

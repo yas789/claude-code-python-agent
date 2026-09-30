@@ -49,9 +49,10 @@ omitting part of it. Read incrementally, including when skipping long lines.
 - [x] 9. Stream selected lines instead of loading the whole file.
   Verification: streaming and existing range tests.
   Result: all 17 focused tests and diff checks passed; whole-file reads are rejected by the test reader.
-- [~] 10. Bound selected-line reads to protect against huge lines.
+- [x] 10. Bound selected-line reads to protect against huge lines.
   Verification: guarded-reader test for bounded `readline` calls.
-- [ ] 11. Skip earlier oversized lines in bounded chunks.
+  Result: all 19 focused tests and diff checks passed; selected reads use at most the remaining budget plus one character.
+- [~] 11. Skip earlier oversized lines in bounded chunks.
   Verification: late-offset reads after an oversized line.
 - [ ] 12. Cover text and workspace boundary cases.
   Verification: empty files, Unicode, newline variants, and symlink containment.
