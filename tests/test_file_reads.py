@@ -2,10 +2,21 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from io import StringIO
 from unittest.mock import patch
 
 from tests import helpers
 from app import main
+
+
+class StreamingReader(StringIO):
+    def readlines(self, *args):
+        raise AssertionError("whole-file reads are not allowed")
+
+    def read(self, size=-1):
+        if size != 1:
+            raise AssertionError("only a one-character EOF probe is allowed")
+        return super().read(size)
 
 
 class FileReadTests(unittest.TestCase):
@@ -105,3 +116,10 @@ class FileReadTests(unittest.TestCase):
         result = self.read()
         self.assertEqual(len(result["content"]), main.DEFAULT_READ_CHARS)
         self.assertEqual(result["next_offset"], 17)
+
+    def test_small_range_does_not_read_the_rest_of_file(self):
+        reader = StreamingReader("alpha\nbeta\n" + "x" * 100000)
+        with patch.object(main, "open", return_value=reader, create=True):
+            result = self.read(limit=1)
+        self.assertEqual(result["content"], "alpha\n")
+        self.assertEqual(result["next_offset"], 2)

@@ -46,9 +46,10 @@ omitting part of it. Read incrementally, including when skipping long lines.
 - [x] 8. Add a configurable character budget and preserve complete lines.
   Verification: character-boundary and oversized-line tests.
   Result: all 24 focused/schema tests and diff checks passed.
-- [~] 9. Stream selected lines instead of loading the whole file.
+- [x] 9. Stream selected lines instead of loading the whole file.
   Verification: streaming and existing range tests.
-- [ ] 10. Bound selected-line reads to protect against huge lines.
+  Result: all 17 focused tests and diff checks passed; whole-file reads are rejected by the test reader.
+- [~] 10. Bound selected-line reads to protect against huge lines.
   Verification: guarded-reader test for bounded `readline` calls.
 - [ ] 11. Skip earlier oversized lines in bounded chunks.
   Verification: late-offset reads after an oversized line.

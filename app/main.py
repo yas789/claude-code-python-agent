@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+from itertools import islice
 from pathlib import Path
 import sys
 
@@ -172,21 +173,27 @@ def read_file(path, offset=1, limit=DEFAULT_READ_LINES, max_chars=DEFAULT_READ_C
         raise RuntimeError(f"path is not a file: {path}")
 
     with open(file_path) as file:
-        lines = file.readlines()
-        end = offset - 1 + limit
+        for _ in islice(file, offset - 1):
+            pass
         selected = []
         character_count = 0
-        for line in lines[offset - 1:end]:
+        truncated = False
+        for _ in range(limit):
+            line = file.readline()
+            if not line:
+                break
             if character_count + len(line) > max_chars:
                 if not selected:
                     raise RuntimeError(
                         f"line {offset} exceeds max_chars={max_chars}; "
                         f"increase max_chars up to {MAX_READ_CHARS} or choose another offset"
                     )
+                truncated = True
                 break
             selected.append(line)
             character_count += len(line)
-        truncated = offset - 1 + len(selected) < len(lines)
+        else:
+            truncated = bool(file.read(1))
 
     return json.dumps({
         "content": "".join(selected),
