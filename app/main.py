@@ -18,13 +18,23 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "read_file",
-            "description": "Read the contents of a file from the local workspace.",
+            "description": "Read a file or a line range from the local workspace.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
                         "description": "The relative path of the file to read.",
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "The 1-based starting line (default: 1).",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Maximum number of lines to read.",
                     },
                 },
                 "required": ["path"],

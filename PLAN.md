@@ -34,9 +34,10 @@ omitting part of it. Read incrementally, including when skipping long lines.
 - [x] 4. Validate range argument types and values.
   Verification: invalid offset/limit tests, including booleans.
   Result: all 7 focused tests and diff checks passed.
-- [~] 5. Advertise optional range arguments to the model.
+- [x] 5. Advertise optional range arguments to the model.
   Verification: tool schema contract tests.
-- [ ] 6. Bound default and maximum line counts.
+  Result: all 14 focused/schema tests and diff checks passed.
+- [~] 6. Bound default and maximum line counts.
   Verification: default truncation and hard-limit tests.
 - [ ] 7. Return structured range and continuation metadata.
   Verification: exact-boundary, EOF, and continuation tests.
@@ -59,4 +60,8 @@ omitting part of it. Read incrementally, including when skipping long lines.
 
 ## Blockers / Failed Checks
 
-None.
+The initial focused schema command imported `app.main` before the existing
+OpenAI test stub was installed, and failed because the dependency is absent in
+the system interpreter. Loading `tests.test_file_reads` (which imports the
+shared helpers) first resolved the test setup; the rerun passed. Full discovery
+also loads the existing helpers before these modules.
