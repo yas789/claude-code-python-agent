@@ -28,9 +28,10 @@ omitting part of it. Read incrementally, including when skipping long lines.
 - [x] 2. Add a 1-based starting-line offset.
   Verification: focused offset tests.
   Result: 3 focused tests and diff checks passed.
-- [~] 3. Add an optional line limit.
+- [x] 3. Add an optional line limit.
   Verification: focused range tests.
-- [ ] 4. Validate range argument types and values.
+  Result: all 5 range tests and diff checks passed.
+- [~] 4. Validate range argument types and values.
   Verification: invalid offset/limit tests, including booleans.
 - [ ] 5. Advertise optional range arguments to the model.
   Verification: tool schema contract tests.

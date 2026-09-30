@@ -132,13 +132,15 @@ def resolve_workspace_path(path, path_type):
     return resolved_path
 
 
-def read_file(path, offset=1):
+def read_file(path, offset=1, limit=None):
     file_path = resolve_workspace_path(path, "file")
     if not file_path.is_file():
         raise RuntimeError(f"path is not a file: {path}")
 
     with open(file_path) as file:
-        return "".join(file.readlines()[offset - 1:])
+        lines = file.readlines()
+        end = None if limit is None else offset - 1 + limit
+        return "".join(lines[offset - 1:end])
 
 
 def list_files(path):

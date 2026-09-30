@@ -26,3 +26,9 @@ class FileReadTests(unittest.TestCase):
 
     def test_offset_past_eof_returns_empty_content(self):
         self.assertEqual(main.read_file("example.txt", offset=5), "")
+
+    def test_limit_selects_a_section(self):
+        self.assertEqual(main.read_file("example.txt", offset=2, limit=1), "beta\n")
+
+    def test_limit_can_extend_past_eof(self):
+        self.assertEqual(main.read_file("example.txt", offset=3, limit=10), "gamma\n")
