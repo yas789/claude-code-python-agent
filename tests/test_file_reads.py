@@ -32,3 +32,15 @@ class FileReadTests(unittest.TestCase):
 
     def test_limit_can_extend_past_eof(self):
         self.assertEqual(main.read_file("example.txt", offset=3, limit=10), "gamma\n")
+
+    def test_rejects_invalid_offsets(self):
+        for value in (0, -1, True, False, 1.5, "2", None):
+            with self.subTest(offset=value):
+                with self.assertRaisesRegex(RuntimeError, "offset must be a positive integer"):
+                    main.read_file("example.txt", offset=value)
+
+    def test_rejects_invalid_limits(self):
+        for value in (0, -1, True, False, 1.5, "2"):
+            with self.subTest(limit=value):
+                with self.assertRaisesRegex(RuntimeError, "limit must be a positive integer"):
+                    main.read_file("example.txt", limit=value)

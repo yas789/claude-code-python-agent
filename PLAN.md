@@ -31,9 +31,10 @@ omitting part of it. Read incrementally, including when skipping long lines.
 - [x] 3. Add an optional line limit.
   Verification: focused range tests.
   Result: all 5 range tests and diff checks passed.
-- [~] 4. Validate range argument types and values.
+- [x] 4. Validate range argument types and values.
   Verification: invalid offset/limit tests, including booleans.
-- [ ] 5. Advertise optional range arguments to the model.
+  Result: all 7 focused tests and diff checks passed.
+- [~] 5. Advertise optional range arguments to the model.
   Verification: tool schema contract tests.
 - [ ] 6. Bound default and maximum line counts.
   Verification: default truncation and hard-limit tests.

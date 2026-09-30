@@ -133,6 +133,11 @@ def resolve_workspace_path(path, path_type):
 
 
 def read_file(path, offset=1, limit=None):
+    if type(offset) is not int or offset < 1:
+        raise RuntimeError("offset must be a positive integer")
+    if limit is not None and (type(limit) is not int or limit < 1):
+        raise RuntimeError("limit must be a positive integer")
+
     file_path = resolve_workspace_path(path, "file")
     if not file_path.is_file():
         raise RuntimeError(f"path is not a file: {path}")
