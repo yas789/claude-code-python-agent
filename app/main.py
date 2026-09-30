@@ -171,7 +171,7 @@ def read_file(path, offset=1, limit=DEFAULT_READ_LINES, max_chars=DEFAULT_READ_C
     if not file_path.is_file():
         raise RuntimeError(f"path is not a file: {path}")
 
-    with open(file_path) as file:
+    with open(file_path, encoding="utf-8") as file:
         for _ in range(offset - 1):
             chunk = file.readline(max_chars + 1)
             if not chunk:

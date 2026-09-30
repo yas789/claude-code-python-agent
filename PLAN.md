@@ -55,9 +55,10 @@ omitting part of it. Read incrementally, including when skipping long lines.
 - [x] 11. Skip earlier oversized lines in bounded chunks.
   Verification: late-offset reads after an oversized line.
   Result: all 21 focused tests and diff checks passed, including a huge offset stopping at EOF.
-- [~] 12. Cover text and workspace boundary cases.
+- [x] 12. Cover text and workspace boundary cases.
   Verification: empty files, Unicode, newline variants, and symlink containment.
-- [ ] 13. Verify ranged reads and error recovery through the agent loop.
+  Result: all 89 tests and diff checks passed; reads now use explicit UTF-8 decoding.
+- [~] 13. Verify ranged reads and error recovery through the agent loop.
   Verification: fake-client multi-round integration tests.
 - [ ] 14. Document the tool contract and continuation examples.
   Verification: documentation diff and schema tests.

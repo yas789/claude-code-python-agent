@@ -167,3 +167,49 @@ class FileReadTests(unittest.TestCase):
         self.assertEqual(result["content"], "")
         self.assertFalse(result["truncated"])
         self.assertEqual(len(reader.requested_sizes), 3)
+
+    def test_empty_file_has_no_range_or_continuation(self):
+        self.file.write_text("")
+        self.assertEqual(self.read(), {
+            "content": "", "start_line": 1, "end_line": None,
+            "truncated": False, "next_offset": None,
+        })
+
+    def test_unicode_budget_counts_characters_not_bytes(self):
+        self.file.write_text("é🙂\n終\n", encoding="utf-8")
+        first = self.read(max_chars=3)
+        self.assertEqual(first["content"], "é🙂\n")
+        self.assertEqual(first["next_offset"], 2)
+        self.assertEqual(self.read(offset=2, max_chars=2)["content"], "終\n")
+
+    def test_newline_variants_use_normalized_line_numbers(self):
+        for newline in (b"\n", b"\r\n", b"\r"):
+            with self.subTest(newline=newline):
+                self.file.write_bytes(newline.join((b"alpha", b"beta", b"gamma")))
+                self.assertEqual(self.read(offset=2, limit=1)["content"], "beta\n")
+                final = self.read(offset=3, max_chars=5)
+                self.assertEqual(final["content"], "gamma")
+                self.assertFalse(final["truncated"])
+
+    def test_blank_lines_are_not_eof(self):
+        self.file.write_text("\n\nbeta\n")
+        result = self.read(limit=2, max_chars=2)
+        self.assertEqual(result["content"], "\n\n")
+        self.assertEqual(result["next_offset"], 3)
+
+    def test_ranged_read_rejects_symlink_outside_workspace(self):
+        with tempfile.TemporaryDirectory() as outside:
+            target = Path(outside) / "secret.txt"
+            target.write_text("secret\n")
+            (self.root / "link.txt").symlink_to(target)
+            with self.assertRaisesRegex(RuntimeError, "outside workspace"):
+                main.read_file("link.txt", offset=1, limit=1)
+
+    def test_ranged_read_allows_symlink_inside_workspace(self):
+        (self.root / "link.txt").symlink_to(self.file)
+        result = json.loads(main.read_file("link.txt", offset=2, limit=1))
+        self.assertEqual(result["content"], "beta\n")
+
+    def test_missing_file_retains_clear_error(self):
+        with self.assertRaisesRegex(RuntimeError, "path is not a file"):
+            main.read_file("missing.txt", offset=2)
