@@ -16,6 +16,10 @@ DEFAULT_READ_LINES = 200
 MAX_READ_LINES = 2000
 DEFAULT_READ_CHARS = 16000
 MAX_READ_CHARS = 65536
+DEFAULT_LIST_ENTRIES = 100
+MAX_LIST_ENTRIES = 2000
+DEFAULT_TOOL_CHARS = 16000
+MAX_TOOL_CHARS = 65536
 
 TOOLS = [
     {
@@ -207,7 +211,31 @@ def read_file(path, offset=1, limit=DEFAULT_READ_LINES, max_chars=DEFAULT_READ_C
     }, ensure_ascii=False)
 
 
-def list_files(path):
+def validate_positive_integer(name, value, maximum=None):
+    if type(value) is not int or value < 1:
+        raise RuntimeError(f"{name} must be a positive integer")
+    if maximum is not None and value > maximum:
+        raise RuntimeError(f"{name} must not exceed {maximum}")
+
+
+def validate_text(name, value, allow_empty=False):
+    if not isinstance(value, str):
+        raise RuntimeError(f"{name} must be a string")
+    if not allow_empty and not value:
+        raise RuntimeError(f"{name} must not be empty")
+
+
+def validate_path(path):
+    validate_text("path", path)
+    if "\0" in path:
+        raise RuntimeError("path must not contain null characters")
+
+
+def list_files(path, offset=1, limit=DEFAULT_LIST_ENTRIES, max_chars=DEFAULT_TOOL_CHARS):
+    validate_path(path)
+    validate_positive_integer("offset", offset)
+    validate_positive_integer("limit", limit, MAX_LIST_ENTRIES)
+    validate_positive_integer("max_chars", max_chars, MAX_TOOL_CHARS)
     directory_path = resolve_workspace_path(path, "directory")
     if not directory_path.is_dir():
         raise RuntimeError(f"path is not a directory: {path}")

@@ -27,9 +27,10 @@ silently caps results and loads whole files. Write tools return plain text.
 - [x] 1. Record plan and baseline on a feature branch.
   Verification: full unittest discovery and diff checks.
   Result: all 92 baseline tests and diff checks passed.
-- [~] 2. Validate listing arguments.
+- [x] 2. Validate listing arguments.
   Verification: invalid types, booleans, offsets, and budgets.
-- [ ] 3. Paginate directory listings.
+  Result: 2 focused tests passed with invalid-input subcases; diff checks passed.
+- [~] 3. Paginate directory listings.
   Verification: ordering, line/name budgets, and exact boundaries.
 - [ ] 4. Add structured listing metadata and schemas.
   Verification: continuation reconstruction and schema contracts.
