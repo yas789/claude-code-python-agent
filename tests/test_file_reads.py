@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -19,19 +20,28 @@ class FileReadTests(unittest.TestCase):
         self.addCleanup(self.workspace_patch.stop)
 
     def test_default_offset_preserves_content(self):
-        self.assertEqual(main.read_file("example.txt"), "alpha\nbeta\ngamma\n")
+        self.assertEqual(self.read()["content"], "alpha\nbeta\ngamma\n")
+
+    def read(self, **arguments):
+        return json.loads(main.read_file("example.txt", **arguments))
 
     def test_offset_is_one_based(self):
-        self.assertEqual(main.read_file("example.txt", offset=2), "beta\ngamma\n")
+        self.assertEqual(self.read(offset=2)["content"], "beta\ngamma\n")
 
     def test_offset_past_eof_returns_empty_content(self):
-        self.assertEqual(main.read_file("example.txt", offset=5), "")
+        self.assertEqual(self.read(offset=5), {
+            "content": "", "start_line": 5, "end_line": None,
+            "truncated": False, "next_offset": None,
+        })
 
     def test_limit_selects_a_section(self):
-        self.assertEqual(main.read_file("example.txt", offset=2, limit=1), "beta\n")
+        self.assertEqual(self.read(offset=2, limit=1), {
+            "content": "beta\n", "start_line": 2, "end_line": 2,
+            "truncated": True, "next_offset": 3,
+        })
 
     def test_limit_can_extend_past_eof(self):
-        self.assertEqual(main.read_file("example.txt", offset=3, limit=10), "gamma\n")
+        self.assertEqual(self.read(offset=3, limit=10)["content"], "gamma\n")
 
     def test_rejects_invalid_offsets(self):
         for value in (0, -1, True, False, 1.5, "2", None):
@@ -47,8 +57,23 @@ class FileReadTests(unittest.TestCase):
 
     def test_default_line_budget(self):
         self.file.write_text("line\n" * (main.DEFAULT_READ_LINES + 1))
-        self.assertEqual(len(main.read_file("example.txt").splitlines()), main.DEFAULT_READ_LINES)
+        result = self.read()
+        self.assertEqual(len(result["content"].splitlines()), main.DEFAULT_READ_LINES)
+        self.assertTrue(result["truncated"])
+        self.assertEqual(result["next_offset"], main.DEFAULT_READ_LINES + 1)
 
     def test_rejects_limit_above_ceiling(self):
         with self.assertRaisesRegex(RuntimeError, "limit must not exceed"):
             main.read_file("example.txt", limit=main.MAX_READ_LINES + 1)
+
+    def test_exact_line_boundary_is_not_truncated(self):
+        result = self.read(limit=3)
+        self.assertFalse(result["truncated"])
+        self.assertIsNone(result["next_offset"])
+        self.assertEqual(result["end_line"], 3)
+
+    def test_continuation_reconstructs_file_without_gaps(self):
+        first = self.read(limit=2)
+        second = self.read(offset=first["next_offset"], limit=2)
+        self.assertEqual(first["content"] + second["content"], self.file.read_text())
+        self.assertFalse(second["truncated"])

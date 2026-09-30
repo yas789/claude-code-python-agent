@@ -40,9 +40,10 @@ omitting part of it. Read incrementally, including when skipping long lines.
 - [x] 6. Bound default and maximum line counts.
   Verification: default truncation and hard-limit tests.
   Result: all 16 focused/schema tests and diff checks passed.
-- [~] 7. Return structured range and continuation metadata.
+- [x] 7. Return structured range and continuation metadata.
   Verification: exact-boundary, EOF, and continuation tests.
-- [ ] 8. Add a configurable character budget and preserve complete lines.
+  Result: all 71 tests and diff checks passed, including continuation without gaps.
+- [~] 8. Add a configurable character budget and preserve complete lines.
   Verification: character-boundary and oversized-line tests.
 - [ ] 9. Stream selected lines instead of loading the whole file.
   Verification: streaming and existing range tests.

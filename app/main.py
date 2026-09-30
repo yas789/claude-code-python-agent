@@ -20,7 +20,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "read_file",
-            "description": "Read a file or a line range from the local workspace.",
+            "description": "Read a bounded line range from the local workspace. Returns JSON with content, start_line, end_line, truncated, and next_offset; use next_offset to continue.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -161,7 +161,16 @@ def read_file(path, offset=1, limit=DEFAULT_READ_LINES):
     with open(file_path) as file:
         lines = file.readlines()
         end = offset - 1 + limit
-        return "".join(lines[offset - 1:end])
+        selected = lines[offset - 1:end]
+        truncated = offset - 1 + len(selected) < len(lines)
+
+    return json.dumps({
+        "content": "".join(selected),
+        "start_line": offset,
+        "end_line": offset + len(selected) - 1 if selected else None,
+        "truncated": truncated,
+        "next_offset": offset + len(selected) if truncated else None,
+    }, ensure_ascii=False)
 
 
 def list_files(path):
