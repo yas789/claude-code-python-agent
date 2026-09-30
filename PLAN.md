@@ -25,9 +25,10 @@ omitting part of it. Read incrementally, including when skipping long lines.
 - [x] 1. Record the roadmap and implementation plan on a feature branch.
   Verification: baseline unittest discovery and `git diff --check`.
   Result: all 59 baseline tests and diff checks passed.
-- [~] 2. Add a 1-based starting-line offset.
+- [x] 2. Add a 1-based starting-line offset.
   Verification: focused offset tests.
-- [ ] 3. Add an optional line limit.
+  Result: 3 focused tests and diff checks passed.
+- [~] 3. Add an optional line limit.
   Verification: focused range tests.
 - [ ] 4. Validate range argument types and values.
   Verification: invalid offset/limit tests, including booleans.
