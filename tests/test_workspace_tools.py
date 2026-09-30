@@ -80,3 +80,45 @@ class WorkspaceToolTests(unittest.TestCase):
             field = parameters["properties"][name]
             self.assertEqual((field["type"], field["minimum"]), ("integer", 1))
             self.assertEqual((field["default"], field["maximum"]), (default, ceiling))
+
+    def test_empty_listing_and_offset_past_end_have_no_continuation(self):
+        expected = {"entries": [], "truncated": False, "next_offset": None}
+        self.assertEqual(self.listing(), expected)
+        self.make_entries()
+        self.assertEqual(self.listing(offset=10**12), expected)
+
+    def test_listing_exact_limits_do_not_claim_truncation(self):
+        self.make_entries()
+        result = self.listing(limit=3, max_chars=14)
+        self.assertFalse(result["truncated"])
+        self.assertIsNone(result["next_offset"])
+
+    def test_agent_receives_and_continues_listing_pages(self):
+        self.make_entries()
+        client = helpers.FakeClient([
+            helpers.assistant_message(None, [helpers.tool_call(
+                "first", "list_files", '{"path": ".", "limit": 2}',
+            )]),
+            helpers.assistant_message(None, [helpers.tool_call(
+                "second", "list_files", '{"path": ".", "offset": 3, "limit": 2}',
+            )]),
+            helpers.assistant_message("Found alpha, beta, and gamma."),
+        ])
+        self.assertEqual(main.run_agent(client, "List entries"), "Found alpha, beta, and gamma.")
+        first = json.loads(client.completions.calls[1]["messages"][2]["content"])
+        second = json.loads(client.completions.calls[2]["messages"][4]["content"])
+        self.assertEqual(first["next_offset"], 3)
+        self.assertEqual(first["entries"] + second["entries"], ["alpha", "beta", "gamma"])
+        self.assertFalse(second["truncated"])
+
+    def test_listing_budget_error_is_returned_to_agent(self):
+        self.make_entries()
+        client = helpers.FakeClient([
+            helpers.assistant_message(None, [helpers.tool_call(
+                "small", "list_files", '{"path": ".", "max_chars": 1}',
+            )]),
+            helpers.assistant_message("Increase the name budget."),
+        ])
+        main.run_agent(client, "List entries")
+        self.assertEqual(client.completions.calls[1]["messages"][2]["content"],
+                         "error: entry name exceeds max_chars; increase max_chars")
