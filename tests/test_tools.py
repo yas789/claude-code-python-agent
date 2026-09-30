@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -19,7 +20,7 @@ class ToolTests(unittest.TestCase):
             main.read_file(".")
 
     def test_list_files_lists_workspace_entries(self):
-        files = main.list_files(".")
+        files = json.loads(main.list_files("."))["entries"]
 
         self.assertIn("README.md", files)
         self.assertIn("app", files)

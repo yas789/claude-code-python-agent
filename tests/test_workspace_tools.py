@@ -37,20 +37,46 @@ class WorkspaceToolTests(unittest.TestCase):
         for name in ("gamma", "alpha", "beta"):
             (self.root / name).touch()
 
+    def listing(self, **arguments):
+        return json.loads(main.list_files(".", **arguments))
+
     def test_listing_returns_sorted_selected_entries(self):
         self.make_entries()
-        self.assertEqual(main.list_files(".", offset=2, limit=1), "beta")
-        self.assertEqual(main.list_files(".", limit=3), "alpha\nbeta\ngamma")
-        self.assertEqual(main.list_files(".", offset=4), "")
+        self.assertEqual(self.listing(offset=2, limit=1)["entries"], ["beta"])
+        self.assertEqual(self.listing(limit=3)["entries"], ["alpha", "beta", "gamma"])
+        self.assertEqual(self.listing(offset=4)["entries"], [])
 
     def test_listing_preserves_names_at_character_boundaries(self):
         self.make_entries()
-        self.assertEqual(main.list_files(".", max_chars=9), "alpha\nbeta")
-        self.assertEqual(main.list_files(".", max_chars=8), "alpha")
+        self.assertEqual(self.listing(max_chars=9)["entries"], ["alpha", "beta"])
+        self.assertEqual(self.listing(max_chars=8)["entries"], ["alpha"])
         with self.assertRaisesRegex(RuntimeError, "entry name exceeds max_chars"):
             main.list_files(".", max_chars=4)
 
     def test_listing_default_entry_limit(self):
         for index in range(main.DEFAULT_LIST_ENTRIES + 1):
             (self.root / f"entry_{index:03}").touch()
-        self.assertEqual(len(main.list_files(".").splitlines()), main.DEFAULT_LIST_ENTRIES)
+        self.assertEqual(len(self.listing()["entries"]), main.DEFAULT_LIST_ENTRIES)
+
+    def test_listing_continuation_reconstructs_entries(self):
+        self.make_entries()
+        first = self.listing(max_chars=9)
+        self.assertTrue(first["truncated"])
+        self.assertEqual(first["next_offset"], 3)
+        second = self.listing(offset=first["next_offset"])
+        self.assertEqual(first["entries"] + second["entries"], ["alpha", "beta", "gamma"])
+        self.assertFalse(second["truncated"])
+        self.assertIsNone(second["next_offset"])
+
+    def test_listing_schema_matches_runtime_budgets(self):
+        tool = next(tool for tool in main.TOOLS if tool["function"]["name"] == "list_files")
+        parameters = tool["function"]["parameters"]
+        self.assertEqual(parameters["required"], ["path"])
+        self.assertFalse(parameters["additionalProperties"])
+        for name, default, ceiling in (
+            ("limit", main.DEFAULT_LIST_ENTRIES, main.MAX_LIST_ENTRIES),
+            ("max_chars", main.DEFAULT_TOOL_CHARS, main.MAX_TOOL_CHARS),
+        ):
+            field = parameters["properties"][name]
+            self.assertEqual((field["type"], field["minimum"]), ("integer", 1))
+            self.assertEqual((field["default"], field["maximum"]), (default, ceiling))

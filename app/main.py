@@ -63,13 +63,27 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "list_files",
-            "description": "List files and directories in the local workspace.",
+            "description": "List sorted entry names in the local workspace. Returns JSON with entries, truncated, and next_offset; continue with next_offset on an unchanged directory.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
                         "description": "The relative directory path to list.",
+                    },
+                    "offset": {
+                        "type": "integer", "minimum": 1, "default": 1,
+                        "description": "The 1-based starting entry.",
+                    },
+                    "limit": {
+                        "type": "integer", "minimum": 1,
+                        "maximum": MAX_LIST_ENTRIES, "default": DEFAULT_LIST_ENTRIES,
+                        "description": "Maximum entries to return (default: 100; maximum: 2000).",
+                    },
+                    "max_chars": {
+                        "type": "integer", "minimum": 1,
+                        "maximum": MAX_TOOL_CHARS, "default": DEFAULT_TOOL_CHARS,
+                        "description": "Entry-name character budget, excluding JSON overhead (default: 16000; maximum: 65536).",
                     },
                 },
                 "required": ["path"],
@@ -250,7 +264,12 @@ def list_files(path, offset=1, limit=DEFAULT_LIST_ENTRIES, max_chars=DEFAULT_TOO
             break
         entries.append(name)
         character_count += len(name)
-    return "\n".join(entries)
+    truncated = offset - 1 + len(entries) < len(names)
+    return json.dumps({
+        "entries": entries,
+        "truncated": truncated,
+        "next_offset": offset + len(entries) if truncated else None,
+    }, ensure_ascii=False)
 
 
 def edit_file(path, old_text, new_text):

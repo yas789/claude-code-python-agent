@@ -33,9 +33,10 @@ silently caps results and loads whole files. Write tools return plain text.
 - [x] 3. Paginate directory listings.
   Verification: ordering, line/name budgets, and exact boundaries.
   Result: all 5 focused tests and diff checks passed.
-- [~] 4. Add structured listing metadata and schemas.
+- [x] 4. Add structured listing metadata and schemas.
   Verification: continuation reconstruction and schema contracts.
-- [ ] 5. Verify listings through the agent loop.
+  Result: all 99 tests and diff checks passed.
+- [~] 5. Verify listings through the agent loop.
   Verification: empty directories, EOF, and multi-page fake-client tests.
 - [ ] 6. Validate search arguments and configurable budgets.
   Verification: malformed queries, types, and budget boundaries.
