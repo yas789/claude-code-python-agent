@@ -2,10 +2,24 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from io import StringIO
 from unittest.mock import patch
 
 from tests import helpers
 from app import main
+
+
+class SearchReader(StringIO):
+    def read(self, *args):
+        raise AssertionError("search must not use whole-file reads")
+
+    def readlines(self, *args):
+        raise AssertionError("search must not use whole-file reads")
+
+    def readline(self, size=-1):
+        if not 0 < size <= main.SEARCH_CHUNK_CHARS:
+            raise AssertionError("search line reads must be bounded")
+        return super().readline(size)
 
 
 class WorkspaceToolTests(unittest.TestCase):
@@ -183,3 +197,24 @@ class WorkspaceToolTests(unittest.TestCase):
             result = main.search_files("target", ".")
         self.assertEqual(visited, [self.root.resolve(), directory.resolve()])
         self.assertIn("visible/found.txt:1: target", result)
+
+    def test_streamed_search_matches_across_chunk_boundaries(self):
+        content = "x" * (main.SEARCH_CHUNK_CHARS - 3) + "target\nnext target\n"
+        reader = SearchReader(content)
+        matches = list(main.iter_matching_lines(reader, "target", 10))
+        self.assertEqual(matches, [(1, "x" * 10, True), (2, "next targe", True)])
+
+    def test_streamed_search_does_not_match_across_lines(self):
+        reader = SearchReader("tar\nget\nTARGET\n")
+        self.assertEqual(list(main.iter_matching_lines(reader, "target", 10)), [])
+
+    def test_streamed_search_handles_single_character_queries_and_final_lines(self):
+        reader = SearchReader("a" * 100000 + "z")
+        self.assertEqual(list(main.iter_matching_lines(reader, "z", 5)), [(1, "aaaaa", True)])
+
+    def test_search_uses_bounded_reader_integration(self):
+        (self.root / "example.txt").touch()
+        reader = SearchReader("x" * 100000 + "target")
+        with patch.object(main, "open", return_value=reader, create=True):
+            result = main.search_files("target", ".", max_chars=5)
+        self.assertEqual(result, "example.txt:1: xxxxx")

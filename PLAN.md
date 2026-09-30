@@ -45,9 +45,10 @@ silently caps results and loads whole files. Write tools return plain text.
 - [x] 7. Fix search containment and prune ignored directories.
   Verification: symlink escapes, internal links, and traversal checks.
   Result: all 17 focused tests and diff checks passed after canonicalizing expected paths.
-- [~] 8. Stream searched files and oversized lines.
+- [x] 8. Stream searched files and oversized lines.
   Verification: bounded-reader tests and chunk-boundary matching.
-- [ ] 9. Add structured search results and explicit snippet clipping.
+  Result: all 21 focused tests and diff checks passed, including matches across chunks and no matches across lines.
+- [~] 9. Add structured search results and explicit snippet clipping.
   Verification: result fields, character budgets, and schema contracts.
 - [ ] 10. Add search continuation.
   Verification: match offsets, exact EOF, and reconstruction without gaps.

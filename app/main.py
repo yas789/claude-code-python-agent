@@ -22,6 +22,7 @@ DEFAULT_TOOL_CHARS = 16000
 MAX_TOOL_CHARS = 65536
 SEARCH_RESULT_CEILING = 200
 MAX_SEARCH_QUERY = 4096
+SEARCH_CHUNK_CHARS = 4096
 
 TOOLS = [
     {
@@ -328,6 +329,30 @@ def iter_search_files(directory_path):
                 continue
 
 
+def iter_matching_lines(file, query, snippet_chars):
+    line_number = 0
+    while True:
+        chunk = file.readline(SEARCH_CHUNK_CHARS)
+        if not chunk:
+            return
+        line_number += 1
+        snippet = ""
+        tail = ""
+        matched = False
+        while chunk:
+            complete = chunk.endswith("\n")
+            text = chunk[:-1] if complete else chunk
+            combined = tail + text
+            matched = matched or query in combined
+            tail = combined[-(len(query) - 1):] if len(query) > 1 else ""
+            snippet = (snippet + text)[:snippet_chars + 1]
+            if complete:
+                break
+            chunk = file.readline(SEARCH_CHUNK_CHARS)
+        if matched:
+            yield line_number, snippet[:snippet_chars], len(snippet) > snippet_chars
+
+
 def search_files(query, path, limit=MAX_SEARCH_RESULTS, max_chars=DEFAULT_TOOL_CHARS):
     validate_path(path)
     validate_text("query", query)
@@ -348,17 +373,15 @@ def search_files(query, path, limit=MAX_SEARCH_RESULTS, max_chars=DEFAULT_TOOL_C
             break
 
         try:
-            lines = file_path.read_text().splitlines()
-        except UnicodeDecodeError:
+            with open(file_path, encoding="utf-8") as file:
+                for line_number, line, _ in iter_matching_lines(file, query, max_chars):
+                    snippet = line[:max_chars - character_count]
+                    results.append(f"{relative_path}:{line_number}: {snippet}")
+                    character_count += len(snippet)
+                    if len(results) >= limit or character_count >= max_chars:
+                        break
+        except (UnicodeDecodeError, OSError):
             continue
-
-        for line_number, line in enumerate(lines, start=1):
-            if query in line:
-                snippet = line[:max_chars - character_count]
-                results.append(f"{relative_path}:{line_number}: {snippet}")
-                character_count += len(snippet)
-                if len(results) >= limit or character_count >= max_chars:
-                    break
 
     if not results:
         return "no matches"
