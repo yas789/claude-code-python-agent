@@ -61,9 +61,10 @@ omitting part of it. Read incrementally, including when skipping long lines.
 - [x] 13. Verify ranged reads and error recovery through the agent loop.
   Verification: fake-client multi-round integration tests.
   Result: all 47 focused/agent tests and diff checks passed; metadata, continuation, and actionable errors reach the model.
-- [~] 14. Document the tool contract and continuation examples.
+- [x] 14. Document the tool contract and continuation examples.
   Verification: documentation diff and schema tests.
-- [ ] 15. Record final verification and roadmap progress.
+  Result: all 39 focused/schema tests and documentation diff checks passed.
+- [~] 15. Record final verification and roadmap progress.
   Verification: full unittest discovery, syntax checks, diff checks, and commit count.
 
 ## Blockers / Failed Checks
