@@ -31,7 +31,7 @@ tool behavior and agent control flow.
       malformed calls.
 - [x] Add bounded line-range file reads with explicit truncation and continuation
       metadata. See [README.md](README.md#bounded-file-reads) for the contract and
-      [PLAN.md](PLAN.md) for the verified implementation steps.
+      [FILE_READ_PLAN.md](FILE_READ_PLAN.md) for the verified implementation steps.
 - [ ] Bound output from the remaining tools with explicit truncation metadata.
 - [ ] Distinguish tool rounds from model requests and allow a final summary when
       the tool budget is exhausted.
