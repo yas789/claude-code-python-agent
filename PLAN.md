@@ -37,9 +37,10 @@ omitting part of it. Read incrementally, including when skipping long lines.
 - [x] 5. Advertise optional range arguments to the model.
   Verification: tool schema contract tests.
   Result: all 14 focused/schema tests and diff checks passed.
-- [~] 6. Bound default and maximum line counts.
+- [x] 6. Bound default and maximum line counts.
   Verification: default truncation and hard-limit tests.
-- [ ] 7. Return structured range and continuation metadata.
+  Result: all 16 focused/schema tests and diff checks passed.
+- [~] 7. Return structured range and continuation metadata.
   Verification: exact-boundary, EOF, and continuation tests.
 - [ ] 8. Add a configurable character budget and preserve complete lines.
   Verification: character-boundary and oversized-line tests.

@@ -12,6 +12,8 @@ MAX_TOOL_ROUNDS = 10
 WORKSPACE_ROOT = Path.cwd().resolve()
 IGNORED_SEARCH_DIRS = {".git", ".venv", "__pycache__"}
 MAX_SEARCH_RESULTS = 20
+DEFAULT_READ_LINES = 200
+MAX_READ_LINES = 2000
 
 TOOLS = [
     {
@@ -34,7 +36,9 @@ TOOLS = [
                     "limit": {
                         "type": "integer",
                         "minimum": 1,
-                        "description": "Maximum number of lines to read.",
+                        "maximum": MAX_READ_LINES,
+                        "default": DEFAULT_READ_LINES,
+                        "description": "Maximum number of lines to read (default: 200; maximum: 2000).",
                     },
                 },
                 "required": ["path"],
@@ -142,11 +146,13 @@ def resolve_workspace_path(path, path_type):
     return resolved_path
 
 
-def read_file(path, offset=1, limit=None):
+def read_file(path, offset=1, limit=DEFAULT_READ_LINES):
     if type(offset) is not int or offset < 1:
         raise RuntimeError("offset must be a positive integer")
-    if limit is not None and (type(limit) is not int or limit < 1):
+    if type(limit) is not int or limit < 1:
         raise RuntimeError("limit must be a positive integer")
+    if limit > MAX_READ_LINES:
+        raise RuntimeError(f"limit must not exceed {MAX_READ_LINES}")
 
     file_path = resolve_workspace_path(path, "file")
     if not file_path.is_file():
@@ -154,7 +160,7 @@ def read_file(path, offset=1, limit=None):
 
     with open(file_path) as file:
         lines = file.readlines()
-        end = None if limit is None else offset - 1 + limit
+        end = offset - 1 + limit
         return "".join(lines[offset - 1:end])
 
 

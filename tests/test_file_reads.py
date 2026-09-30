@@ -40,7 +40,15 @@ class FileReadTests(unittest.TestCase):
                     main.read_file("example.txt", offset=value)
 
     def test_rejects_invalid_limits(self):
-        for value in (0, -1, True, False, 1.5, "2"):
+        for value in (0, -1, True, False, 1.5, "2", None):
             with self.subTest(limit=value):
                 with self.assertRaisesRegex(RuntimeError, "limit must be a positive integer"):
                     main.read_file("example.txt", limit=value)
+
+    def test_default_line_budget(self):
+        self.file.write_text("line\n" * (main.DEFAULT_READ_LINES + 1))
+        self.assertEqual(len(main.read_file("example.txt").splitlines()), main.DEFAULT_READ_LINES)
+
+    def test_rejects_limit_above_ceiling(self):
+        with self.assertRaisesRegex(RuntimeError, "limit must not exceed"):
+            main.read_file("example.txt", limit=main.MAX_READ_LINES + 1)
