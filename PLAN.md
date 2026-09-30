@@ -42,9 +42,10 @@ silently caps results and loads whole files. Write tools return plain text.
 - [x] 6. Validate search arguments and configurable budgets.
   Verification: malformed queries, types, and budget boundaries.
   Result: all 14 focused tests and diff checks passed.
-- [~] 7. Fix search containment and prune ignored directories.
+- [x] 7. Fix search containment and prune ignored directories.
   Verification: symlink escapes, internal links, and traversal checks.
-- [ ] 8. Stream searched files and oversized lines.
+  Result: all 17 focused tests and diff checks passed after canonicalizing expected paths.
+- [~] 8. Stream searched files and oversized lines.
   Verification: bounded-reader tests and chunk-boundary matching.
 - [ ] 9. Add structured search results and explicit snippet clipping.
   Verification: result fields, character budgets, and schema contracts.
@@ -63,4 +64,6 @@ silently caps results and loads whole files. Write tools return plain text.
 
 ## Blockers / Failed Checks
 
-None.
+Step 7's first traversal assertion compared macOS `/var` paths with resolved
+`/private/var` paths. Canonicalizing expected test paths fixed the assertion;
+the implementation correctly resolves workspace paths.

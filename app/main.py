@@ -314,6 +314,20 @@ def create_file(path, content):
     return f"created {path}"
 
 
+def iter_search_files(directory_path):
+    workspace_root = WORKSPACE_ROOT.resolve()
+    for directory, dirnames, filenames in os.walk(directory_path, followlinks=False):
+        dirnames[:] = sorted(name for name in dirnames if name not in IGNORED_SEARCH_DIRS)
+        for name in sorted(filenames):
+            file_path = Path(directory) / name
+            try:
+                resolved_path = resolve_workspace_path(str(file_path), "file")
+                if resolved_path.is_file():
+                    yield file_path.relative_to(workspace_root), resolved_path
+            except (RuntimeError, OSError):
+                continue
+
+
 def search_files(query, path, limit=MAX_SEARCH_RESULTS, max_chars=DEFAULT_TOOL_CHARS):
     validate_path(path)
     validate_text("query", query)
@@ -329,13 +343,9 @@ def search_files(query, path, limit=MAX_SEARCH_RESULTS, max_chars=DEFAULT_TOOL_C
 
     results = []
     character_count = 0
-    for file_path in sorted(directory_path.rglob("*")):
+    for relative_path, file_path in iter_search_files(directory_path):
         if len(results) >= limit or character_count >= max_chars:
             break
-        if not file_path.is_file():
-            continue
-        if any(part in IGNORED_SEARCH_DIRS for part in file_path.relative_to(directory_path).parts):
-            continue
 
         try:
             lines = file_path.read_text().splitlines()
@@ -344,7 +354,6 @@ def search_files(query, path, limit=MAX_SEARCH_RESULTS, max_chars=DEFAULT_TOOL_C
 
         for line_number, line in enumerate(lines, start=1):
             if query in line:
-                relative_path = file_path.relative_to(WORKSPACE_ROOT.resolve())
                 snippet = line[:max_chars - character_count]
                 results.append(f"{relative_path}:{line_number}: {snippet}")
                 character_count += len(snippet)

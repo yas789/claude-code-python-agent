@@ -146,3 +146,40 @@ class WorkspaceToolTests(unittest.TestCase):
         (self.root / "example.txt").write_text("target one\ntarget two\n")
         self.assertEqual(len(main.search_files("target", ".", limit=1).splitlines()), 1)
         self.assertEqual(main.search_files("target", ".", max_chars=3), "example.txt:1: tar")
+
+    def test_search_skips_files_and_directories_linked_outside_workspace(self):
+        with tempfile.TemporaryDirectory() as outside:
+            target = Path(outside) / "secret.txt"
+            target.write_text("target secret")
+            (self.root / "outside.txt").symlink_to(target)
+            (self.root / "outside_dir").symlink_to(Path(outside), target_is_directory=True)
+            self.assertEqual(main.search_files("target", "."), "no matches")
+
+    def test_search_allows_internal_file_links_and_skips_broken_links(self):
+        (self.root / "source.txt").write_text("target")
+        (self.root / "alias.txt").symlink_to(self.root / "source.txt")
+        (self.root / "broken.txt").symlink_to(self.root / "missing.txt")
+        result = main.search_files("target", ".")
+        self.assertIn("alias.txt:1: target", result)
+        self.assertIn("source.txt:1: target", result)
+
+    def test_search_prunes_ignored_directories_before_visiting(self):
+        for name in main.IGNORED_SEARCH_DIRS:
+            directory = self.root / name
+            directory.mkdir()
+            (directory / "ignored.txt").write_text("target")
+        directory = self.root / "visible"
+        directory.mkdir()
+        (directory / "found.txt").write_text("target")
+        original_walk = main.os.walk
+        visited = []
+
+        def tracking_walk(*args, **kwargs):
+            for entry in original_walk(*args, **kwargs):
+                visited.append(Path(entry[0]))
+                yield entry
+
+        with patch.object(main.os, "walk", side_effect=tracking_walk):
+            result = main.search_files("target", ".")
+        self.assertEqual(visited, [self.root.resolve(), directory.resolve()])
+        self.assertIn("visible/found.txt:1: target", result)
