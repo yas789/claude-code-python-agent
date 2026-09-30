@@ -43,9 +43,10 @@ omitting part of it. Read incrementally, including when skipping long lines.
 - [x] 7. Return structured range and continuation metadata.
   Verification: exact-boundary, EOF, and continuation tests.
   Result: all 71 tests and diff checks passed, including continuation without gaps.
-- [~] 8. Add a configurable character budget and preserve complete lines.
+- [x] 8. Add a configurable character budget and preserve complete lines.
   Verification: character-boundary and oversized-line tests.
-- [ ] 9. Stream selected lines instead of loading the whole file.
+  Result: all 24 focused/schema tests and diff checks passed.
+- [~] 9. Stream selected lines instead of loading the whole file.
   Verification: streaming and existing range tests.
 - [ ] 10. Bound selected-line reads to protect against huge lines.
   Verification: guarded-reader test for bounded `readline` calls.

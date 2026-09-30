@@ -14,6 +14,8 @@ IGNORED_SEARCH_DIRS = {".git", ".venv", "__pycache__"}
 MAX_SEARCH_RESULTS = 20
 DEFAULT_READ_LINES = 200
 MAX_READ_LINES = 2000
+DEFAULT_READ_CHARS = 16000
+MAX_READ_CHARS = 65536
 
 TOOLS = [
     {
@@ -39,6 +41,13 @@ TOOLS = [
                         "maximum": MAX_READ_LINES,
                         "default": DEFAULT_READ_LINES,
                         "description": "Maximum number of lines to read (default: 200; maximum: 2000).",
+                    },
+                    "max_chars": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": MAX_READ_CHARS,
+                        "default": DEFAULT_READ_CHARS,
+                        "description": "Content character budget including newlines (default: 16000; maximum: 65536). Complete lines only; increase this budget if a selected line is too long.",
                     },
                 },
                 "required": ["path"],
@@ -146,13 +155,17 @@ def resolve_workspace_path(path, path_type):
     return resolved_path
 
 
-def read_file(path, offset=1, limit=DEFAULT_READ_LINES):
+def read_file(path, offset=1, limit=DEFAULT_READ_LINES, max_chars=DEFAULT_READ_CHARS):
     if type(offset) is not int or offset < 1:
         raise RuntimeError("offset must be a positive integer")
     if type(limit) is not int or limit < 1:
         raise RuntimeError("limit must be a positive integer")
     if limit > MAX_READ_LINES:
         raise RuntimeError(f"limit must not exceed {MAX_READ_LINES}")
+    if type(max_chars) is not int or max_chars < 1:
+        raise RuntimeError("max_chars must be a positive integer")
+    if max_chars > MAX_READ_CHARS:
+        raise RuntimeError(f"max_chars must not exceed {MAX_READ_CHARS}")
 
     file_path = resolve_workspace_path(path, "file")
     if not file_path.is_file():
@@ -161,7 +174,18 @@ def read_file(path, offset=1, limit=DEFAULT_READ_LINES):
     with open(file_path) as file:
         lines = file.readlines()
         end = offset - 1 + limit
-        selected = lines[offset - 1:end]
+        selected = []
+        character_count = 0
+        for line in lines[offset - 1:end]:
+            if character_count + len(line) > max_chars:
+                if not selected:
+                    raise RuntimeError(
+                        f"line {offset} exceeds max_chars={max_chars}; "
+                        f"increase max_chars up to {MAX_READ_CHARS} or choose another offset"
+                    )
+                break
+            selected.append(line)
+            character_count += len(line)
         truncated = offset - 1 + len(selected) < len(lines)
 
     return json.dumps({

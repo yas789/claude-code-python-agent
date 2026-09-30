@@ -77,3 +77,31 @@ class FileReadTests(unittest.TestCase):
         second = self.read(offset=first["next_offset"], limit=2)
         self.assertEqual(first["content"] + second["content"], self.file.read_text())
         self.assertFalse(second["truncated"])
+
+    def test_character_budget_preserves_complete_lines(self):
+        first = self.read(max_chars=8)
+        self.assertEqual(first["content"], "alpha\n")
+        self.assertEqual(first["next_offset"], 2)
+        second = self.read(offset=2, max_chars=11)
+        self.assertEqual(first["content"] + second["content"], self.file.read_text())
+
+    def test_exact_character_boundary_is_not_truncated(self):
+        self.assertFalse(self.read(max_chars=17)["truncated"])
+
+    def test_oversized_first_line_gives_actionable_error(self):
+        with self.assertRaisesRegex(RuntimeError, "line 1 exceeds max_chars=5; increase"):
+            self.read(max_chars=5)
+
+    def test_rejects_invalid_character_budgets(self):
+        for value in (0, -1, True, False, 1.5, "2", None):
+            with self.subTest(max_chars=value):
+                with self.assertRaisesRegex(RuntimeError, "max_chars must be a positive integer"):
+                    self.read(max_chars=value)
+        with self.assertRaisesRegex(RuntimeError, "max_chars must not exceed"):
+            self.read(max_chars=main.MAX_READ_CHARS + 1)
+
+    def test_default_character_budget(self):
+        self.file.write_text(("x" * 999 + "\n") * 20)
+        result = self.read()
+        self.assertEqual(len(result["content"]), main.DEFAULT_READ_CHARS)
+        self.assertEqual(result["next_offset"], 17)
