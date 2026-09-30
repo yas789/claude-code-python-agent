@@ -5,7 +5,7 @@
 Let the agent read a specific file section with bounded output and explicit
 continuation metadata. Keep the existing single-prompt CLI and workspace checks.
 
-## Known State
+## Baseline State
 
 `read_file` currently reads a whole file into memory and accepts only `path`.
 The repository already has deterministic unittest coverage. The previously
@@ -64,8 +64,19 @@ omitting part of it. Read incrementally, including when skipping long lines.
 - [x] 14. Document the tool contract and continuation examples.
   Verification: documentation diff and schema tests.
   Result: all 39 focused/schema tests and documentation diff checks passed.
-- [~] 15. Record final verification and roadmap progress.
+- [x] 15. Record final verification and roadmap progress.
   Verification: full unittest discovery, syntax checks, diff checks, and commit count.
+  Result: all 92 tests passed; syntax checks and working-tree/branch diff checks
+  passed. Verified 14 preceding commits from baseline `57e3949`; this final
+  documentation commit completes the 15-commit sequence.
+
+## Delivered State
+
+`read_file(path, offset=1, limit=200, max_chars=16000)` now streams bounded UTF-8
+line ranges and returns JSON content with range and continuation metadata.
+Validation, character/line boundaries, bounded buffering, workspace containment,
+and agent-loop recovery are covered by deterministic tests. The README documents
+the return-format change and the roadmap marks this feature complete.
 
 ## Blockers / Failed Checks
 

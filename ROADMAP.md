@@ -7,7 +7,7 @@ full development loop:
 
 **Understand → edit → run checks → fix failures → report results.**
 
-The milestones below are planned work, not implemented capabilities. Complete
+Unchecked items below are planned work; checked items are implemented. Complete
 the reliable edit-and-test loop first; use evaluation results to guide later
 investment in interactive sessions and larger-repository support.
 
@@ -19,7 +19,8 @@ The agent processes one prompt and executes tool calls sequentially until the
 model returns an answer or the request limit is reached.
 
 Available tools are `read_file`, `list_files`, `edit_file`, `create_file`, and
-`search_files`. Tests use a fake model client and temporary workspaces to check
+`search_files`. File reads support bounded line ranges and return JSON text with
+explicit continuation metadata. Tests use a fake model client and temporary workspaces to check
 tool behavior and agent control flow.
 
 ## Milestone 1: Reliable Foundations
@@ -28,8 +29,10 @@ tool behavior and agent control flow.
       bypass workspace containment.
 - [ ] Validate tool argument shapes and types, returning actionable errors for
       malformed calls.
-- [ ] Add line-range reads and bounded tool output with explicit truncation
-      metadata.
+- [x] Add bounded line-range file reads with explicit truncation and continuation
+      metadata. See [README.md](README.md#bounded-file-reads) for the contract and
+      [PLAN.md](PLAN.md) for the verified implementation steps.
+- [ ] Bound output from the remaining tools with explicit truncation metadata.
 - [ ] Distinguish tool rounds from model requests and allow a final summary when
       the tool budget is exhausted.
 - [ ] Provide clear CLI errors for missing credentials, API failures, and
