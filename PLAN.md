@@ -58,9 +58,10 @@ omitting part of it. Read incrementally, including when skipping long lines.
 - [x] 12. Cover text and workspace boundary cases.
   Verification: empty files, Unicode, newline variants, and symlink containment.
   Result: all 89 tests and diff checks passed; reads now use explicit UTF-8 decoding.
-- [~] 13. Verify ranged reads and error recovery through the agent loop.
+- [x] 13. Verify ranged reads and error recovery through the agent loop.
   Verification: fake-client multi-round integration tests.
-- [ ] 14. Document the tool contract and continuation examples.
+  Result: all 47 focused/agent tests and diff checks passed; metadata, continuation, and actionable errors reach the model.
+- [~] 14. Document the tool contract and continuation examples.
   Verification: documentation diff and schema tests.
 - [ ] 15. Record final verification and roadmap progress.
   Verification: full unittest discovery, syntax checks, diff checks, and commit count.
