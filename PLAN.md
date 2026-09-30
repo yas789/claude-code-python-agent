@@ -39,9 +39,10 @@ silently caps results and loads whole files. Write tools return plain text.
 - [x] 5. Verify listings through the agent loop.
   Verification: empty directories, EOF, and multi-page fake-client tests.
   Result: all 27 focused/agent tests and diff checks passed.
-- [~] 6. Validate search arguments and configurable budgets.
+- [x] 6. Validate search arguments and configurable budgets.
   Verification: malformed queries, types, and budget boundaries.
-- [ ] 7. Fix search containment and prune ignored directories.
+  Result: all 14 focused tests and diff checks passed.
+- [~] 7. Fix search containment and prune ignored directories.
   Verification: symlink escapes, internal links, and traversal checks.
 - [ ] 8. Stream searched files and oversized lines.
   Verification: bounded-reader tests and chunk-boundary matching.

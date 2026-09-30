@@ -20,6 +20,8 @@ DEFAULT_LIST_ENTRIES = 100
 MAX_LIST_ENTRIES = 2000
 DEFAULT_TOOL_CHARS = 16000
 MAX_TOOL_CHARS = 65536
+SEARCH_RESULT_CEILING = 200
+MAX_SEARCH_QUERY = 4096
 
 TOOLS = [
     {
@@ -149,11 +151,24 @@ TOOLS = [
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "The text to search for.",
+                        "minLength": 1,
+                        "maxLength": MAX_SEARCH_QUERY,
+                        "pattern": "^[^\r\n]+$",
+                        "description": "Nonempty, case-sensitive substring without CR/LF (maximum: 4096 characters).",
                     },
                     "path": {
                         "type": "string",
                         "description": "The relative directory path to search.",
+                    },
+                    "limit": {
+                        "type": "integer", "minimum": 1,
+                        "maximum": SEARCH_RESULT_CEILING, "default": MAX_SEARCH_RESULTS,
+                        "description": "Maximum matching lines (default: 20; maximum: 200).",
+                    },
+                    "max_chars": {
+                        "type": "integer", "minimum": 1,
+                        "maximum": MAX_TOOL_CHARS, "default": DEFAULT_TOOL_CHARS,
+                        "description": "Total snippet-character budget excluding metadata and JSON overhead (default: 16000; maximum: 65536).",
                     },
                 },
                 "required": ["query", "path"],
@@ -299,14 +314,23 @@ def create_file(path, content):
     return f"created {path}"
 
 
-def search_files(query, path):
+def search_files(query, path, limit=MAX_SEARCH_RESULTS, max_chars=DEFAULT_TOOL_CHARS):
+    validate_path(path)
+    validate_text("query", query)
+    if len(query) > MAX_SEARCH_QUERY:
+        raise RuntimeError(f"query must not exceed {MAX_SEARCH_QUERY} characters")
+    if "\n" in query or "\r" in query:
+        raise RuntimeError("query must not contain CR or LF")
+    validate_positive_integer("limit", limit, SEARCH_RESULT_CEILING)
+    validate_positive_integer("max_chars", max_chars, MAX_TOOL_CHARS)
     directory_path = resolve_workspace_path(path, "directory")
     if not directory_path.is_dir():
         raise RuntimeError(f"path is not a directory: {path}")
 
     results = []
+    character_count = 0
     for file_path in sorted(directory_path.rglob("*")):
-        if len(results) >= MAX_SEARCH_RESULTS:
+        if len(results) >= limit or character_count >= max_chars:
             break
         if not file_path.is_file():
             continue
@@ -321,8 +345,10 @@ def search_files(query, path):
         for line_number, line in enumerate(lines, start=1):
             if query in line:
                 relative_path = file_path.relative_to(WORKSPACE_ROOT.resolve())
-                results.append(f"{relative_path}:{line_number}: {line}")
-                if len(results) >= MAX_SEARCH_RESULTS:
+                snippet = line[:max_chars - character_count]
+                results.append(f"{relative_path}:{line_number}: {snippet}")
+                character_count += len(snippet)
+                if len(results) >= limit or character_count >= max_chars:
                     break
 
     if not results:

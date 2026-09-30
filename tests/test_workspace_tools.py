@@ -122,3 +122,27 @@ class WorkspaceToolTests(unittest.TestCase):
         main.run_agent(client, "List entries")
         self.assertEqual(client.completions.calls[1]["messages"][2]["content"],
                          "error: entry name exceeds max_chars; increase max_chars")
+
+    def test_search_rejects_invalid_queries(self):
+        for query in (None, False, 1, [], "", "a\nb", "a\rb", "x" * (main.MAX_SEARCH_QUERY + 1)):
+            with self.subTest(query=repr(query)[:30]):
+                with self.assertRaisesRegex(RuntimeError, "query must"):
+                    main.search_files(query, ".")
+
+    def test_search_rejects_invalid_paths_and_budgets(self):
+        for path in (None, False, "", "bad\0path"):
+            with self.assertRaisesRegex(RuntimeError, "path must"):
+                main.search_files("target", path)
+        for name in ("limit", "max_chars"):
+            for value in (0, -1, True, None, "1", 1.5):
+                with self.subTest(argument=name, value=value):
+                    with self.assertRaisesRegex(RuntimeError, f"{name} must be a positive integer"):
+                        main.search_files("target", ".", **{name: value})
+        for name, maximum in (("limit", main.SEARCH_RESULT_CEILING), ("max_chars", main.MAX_TOOL_CHARS)):
+            with self.assertRaisesRegex(RuntimeError, f"{name} must not exceed"):
+                main.search_files("target", ".", **{name: maximum + 1})
+
+    def test_search_uses_custom_result_and_character_budgets(self):
+        (self.root / "example.txt").write_text("target one\ntarget two\n")
+        self.assertEqual(len(main.search_files("target", ".", limit=1).splitlines()), 1)
+        self.assertEqual(main.search_files("target", ".", max_chars=3), "example.txt:1: tar")
