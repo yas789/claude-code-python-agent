@@ -146,7 +146,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "search_files",
-            "description": "Search text files in the local workspace for a query string.",
+            "description": "Search UTF-8 files in the local workspace for a case-sensitive substring. Returns JSON results with path, line, text, and text_truncated; page truncated means more matching lines remain. Clipped text is a line prefix and may omit the query.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -353,6 +353,16 @@ def iter_matching_lines(file, query, snippet_chars):
             yield line_number, snippet[:snippet_chars], len(snippet) > snippet_chars
 
 
+def iter_search_matches(directory_path, query, snippet_chars):
+    for relative_path, file_path in iter_search_files(directory_path):
+        try:
+            with open(file_path, encoding="utf-8") as file:
+                for line_number, text, clipped in iter_matching_lines(file, query, snippet_chars):
+                    yield str(relative_path), line_number, text, clipped
+        except (UnicodeDecodeError, OSError):
+            continue
+
+
 def search_files(query, path, limit=MAX_SEARCH_RESULTS, max_chars=DEFAULT_TOOL_CHARS):
     validate_path(path)
     validate_text("query", query)
@@ -368,25 +378,21 @@ def search_files(query, path, limit=MAX_SEARCH_RESULTS, max_chars=DEFAULT_TOOL_C
 
     results = []
     character_count = 0
-    for relative_path, file_path in iter_search_files(directory_path):
+    truncated = False
+    for relative_path, line_number, text, clipped in iter_search_matches(directory_path, query, max_chars):
         if len(results) >= limit or character_count >= max_chars:
+            truncated = True
             break
+        snippet = text[:max_chars - character_count]
+        results.append({
+            "path": relative_path,
+            "line": line_number,
+            "text": snippet,
+            "text_truncated": clipped or len(snippet) < len(text),
+        })
+        character_count += len(snippet)
 
-        try:
-            with open(file_path, encoding="utf-8") as file:
-                for line_number, line, _ in iter_matching_lines(file, query, max_chars):
-                    snippet = line[:max_chars - character_count]
-                    results.append(f"{relative_path}:{line_number}: {snippet}")
-                    character_count += len(snippet)
-                    if len(results) >= limit or character_count >= max_chars:
-                        break
-        except (UnicodeDecodeError, OSError):
-            continue
-
-    if not results:
-        return "no matches"
-
-    return "\n".join(results)
+    return json.dumps({"results": results, "truncated": truncated}, ensure_ascii=False)
 
 
 TOOL_FUNCTIONS = {

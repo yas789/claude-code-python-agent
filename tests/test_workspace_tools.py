@@ -158,8 +158,15 @@ class WorkspaceToolTests(unittest.TestCase):
 
     def test_search_uses_custom_result_and_character_budgets(self):
         (self.root / "example.txt").write_text("target one\ntarget two\n")
-        self.assertEqual(len(main.search_files("target", ".", limit=1).splitlines()), 1)
-        self.assertEqual(main.search_files("target", ".", max_chars=3), "example.txt:1: tar")
+        self.assertEqual(len(self.search(limit=1)["results"]), 1)
+        result = self.search(max_chars=3)
+        self.assertEqual(result["results"], [{
+            "path": "example.txt", "line": 1, "text": "tar", "text_truncated": True,
+        }])
+        self.assertTrue(result["truncated"])
+
+    def search(self, query="target", **arguments):
+        return json.loads(main.search_files(query, ".", **arguments))
 
     def test_search_skips_files_and_directories_linked_outside_workspace(self):
         with tempfile.TemporaryDirectory() as outside:
@@ -167,15 +174,14 @@ class WorkspaceToolTests(unittest.TestCase):
             target.write_text("target secret")
             (self.root / "outside.txt").symlink_to(target)
             (self.root / "outside_dir").symlink_to(Path(outside), target_is_directory=True)
-            self.assertEqual(main.search_files("target", "."), "no matches")
+            self.assertEqual(self.search()["results"], [])
 
     def test_search_allows_internal_file_links_and_skips_broken_links(self):
         (self.root / "source.txt").write_text("target")
         (self.root / "alias.txt").symlink_to(self.root / "source.txt")
         (self.root / "broken.txt").symlink_to(self.root / "missing.txt")
-        result = main.search_files("target", ".")
-        self.assertIn("alias.txt:1: target", result)
-        self.assertIn("source.txt:1: target", result)
+        result = self.search()["results"]
+        self.assertEqual([match["path"] for match in result], ["alias.txt", "source.txt"])
 
     def test_search_prunes_ignored_directories_before_visiting(self):
         for name in main.IGNORED_SEARCH_DIRS:
@@ -196,7 +202,7 @@ class WorkspaceToolTests(unittest.TestCase):
         with patch.object(main.os, "walk", side_effect=tracking_walk):
             result = main.search_files("target", ".")
         self.assertEqual(visited, [self.root.resolve(), directory.resolve()])
-        self.assertIn("visible/found.txt:1: target", result)
+        self.assertEqual(json.loads(result)["results"][0]["path"], "visible/found.txt")
 
     def test_streamed_search_matches_across_chunk_boundaries(self):
         content = "x" * (main.SEARCH_CHUNK_CHARS - 3) + "target\nnext target\n"
@@ -217,4 +223,26 @@ class WorkspaceToolTests(unittest.TestCase):
         reader = SearchReader("x" * 100000 + "target")
         with patch.object(main, "open", return_value=reader, create=True):
             result = main.search_files("target", ".", max_chars=5)
-        self.assertEqual(result, "example.txt:1: xxxxx")
+        match = json.loads(result)["results"][0]
+        self.assertEqual((match["path"], match["line"], match["text"]), ("example.txt", 1, "xxxxx"))
+        self.assertTrue(match["text_truncated"])
+
+    def test_search_separates_page_truncation_from_snippet_clipping(self):
+        (self.root / "example.txt").write_text("target text")
+        result = self.search(max_chars=6)
+        self.assertFalse(result["truncated"])
+        self.assertTrue(result["results"][0]["text_truncated"])
+
+    def test_search_schema_matches_runtime_budgets(self):
+        tool = next(tool for tool in main.TOOLS if tool["function"]["name"] == "search_files")
+        parameters = tool["function"]["parameters"]
+        self.assertEqual(parameters["required"], ["query", "path"])
+        self.assertFalse(parameters["additionalProperties"])
+        properties = parameters["properties"]
+        self.assertEqual(properties["query"]["maxLength"], main.MAX_SEARCH_QUERY)
+        for name, default, ceiling in (
+            ("limit", main.MAX_SEARCH_RESULTS, main.SEARCH_RESULT_CEILING),
+            ("max_chars", main.DEFAULT_TOOL_CHARS, main.MAX_TOOL_CHARS),
+        ):
+            self.assertEqual(properties[name]["default"], default)
+            self.assertEqual(properties[name]["maximum"], ceiling)
