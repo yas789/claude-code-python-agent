@@ -80,6 +80,11 @@ Run tests:
 python3 -m unittest discover -s tests -p 'test_*.py'
 ```
 
+## Architecture and Long-Term Plan
+
+See [ROADMAP.md](ROADMAP.md) for the current architecture, proposed module
+structure, and milestones toward a reliable edit-and-test coding assistant.
+
 ## Branch Flow
 
 - `main` is the stable branch.

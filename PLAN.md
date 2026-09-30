@@ -1,0 +1,59 @@
+# Bounded File Reads: 15 Small Commits
+
+## Goal
+
+Let the agent read a specific file section with bounded output and explicit
+continuation metadata. Keep the existing single-prompt CLI and workspace checks.
+
+## Known State
+
+`read_file` currently reads a whole file into memory and accepts only `path`.
+The repository already has deterministic unittest coverage. The previously
+written README/roadmap documentation will be included in the planning commit.
+
+## Contract
+
+Use 1-based `offset`, a line `limit`, and a character budget `max_chars`.
+Defaults will be 200 lines and 16,000 characters; hard ceilings will be 2,000
+lines and 65,536 characters. Return JSON text containing content, range, and
+continuation metadata. Preserve complete lines: when a single selected line
+exceeds the character budget, return an actionable error instead of silently
+omitting part of it. Read incrementally, including when skipping long lines.
+
+## Checklist
+
+- [x] 1. Record the roadmap and implementation plan on a feature branch.
+  Verification: baseline unittest discovery and `git diff --check`.
+  Result: all 59 baseline tests and diff checks passed.
+- [~] 2. Add a 1-based starting-line offset.
+  Verification: focused offset tests.
+- [ ] 3. Add an optional line limit.
+  Verification: focused range tests.
+- [ ] 4. Validate range argument types and values.
+  Verification: invalid offset/limit tests, including booleans.
+- [ ] 5. Advertise optional range arguments to the model.
+  Verification: tool schema contract tests.
+- [ ] 6. Bound default and maximum line counts.
+  Verification: default truncation and hard-limit tests.
+- [ ] 7. Return structured range and continuation metadata.
+  Verification: exact-boundary, EOF, and continuation tests.
+- [ ] 8. Add a configurable character budget and preserve complete lines.
+  Verification: character-boundary and oversized-line tests.
+- [ ] 9. Stream selected lines instead of loading the whole file.
+  Verification: streaming and existing range tests.
+- [ ] 10. Bound selected-line reads to protect against huge lines.
+  Verification: guarded-reader test for bounded `readline` calls.
+- [ ] 11. Skip earlier oversized lines in bounded chunks.
+  Verification: late-offset reads after an oversized line.
+- [ ] 12. Cover text and workspace boundary cases.
+  Verification: empty files, Unicode, newline variants, and symlink containment.
+- [ ] 13. Verify ranged reads and error recovery through the agent loop.
+  Verification: fake-client multi-round integration tests.
+- [ ] 14. Document the tool contract and continuation examples.
+  Verification: documentation diff and schema tests.
+- [ ] 15. Record final verification and roadmap progress.
+  Verification: full unittest discovery, syntax checks, diff checks, and commit count.
+
+## Blockers / Failed Checks
+
+None.
