@@ -52,9 +52,10 @@ omitting part of it. Read incrementally, including when skipping long lines.
 - [x] 10. Bound selected-line reads to protect against huge lines.
   Verification: guarded-reader test for bounded `readline` calls.
   Result: all 19 focused tests and diff checks passed; selected reads use at most the remaining budget plus one character.
-- [~] 11. Skip earlier oversized lines in bounded chunks.
+- [x] 11. Skip earlier oversized lines in bounded chunks.
   Verification: late-offset reads after an oversized line.
-- [ ] 12. Cover text and workspace boundary cases.
+  Result: all 21 focused tests and diff checks passed, including a huge offset stopping at EOF.
+- [~] 12. Cover text and workspace boundary cases.
   Verification: empty files, Unicode, newline variants, and symlink containment.
 - [ ] 13. Verify ranged reads and error recovery through the agent loop.
   Verification: fake-client multi-round integration tests.

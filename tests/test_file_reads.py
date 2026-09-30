@@ -151,3 +151,19 @@ class FileReadTests(unittest.TestCase):
         self.assertEqual(result["content"], "alpha\n")
         self.assertEqual(result["next_offset"], 2)
         self.assertEqual(reader.requested_sizes, [9, 3])
+
+    def test_skips_oversized_lines_in_bounded_chunks(self):
+        reader = BoundedReader("x" * 100000 + "\nbeta\ngamma\n", max_chars=10)
+        with patch.object(main, "open", return_value=reader, create=True):
+            result = self.read(offset=2, limit=1, max_chars=10)
+        self.assertEqual(result["content"], "beta\n")
+        self.assertEqual(result["next_offset"], 3)
+        self.assertGreater(len(reader.requested_sizes), 9000)
+
+    def test_huge_offset_stops_skipping_at_eof(self):
+        reader = BoundedReader("alpha\n", max_chars=10)
+        with patch.object(main, "open", return_value=reader, create=True):
+            result = self.read(offset=10**12, max_chars=10)
+        self.assertEqual(result["content"], "")
+        self.assertFalse(result["truncated"])
+        self.assertEqual(len(reader.requested_sizes), 3)

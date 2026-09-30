@@ -1,7 +1,6 @@
 import argparse
 import json
 import os
-from itertools import islice
 from pathlib import Path
 import sys
 
@@ -173,8 +172,12 @@ def read_file(path, offset=1, limit=DEFAULT_READ_LINES, max_chars=DEFAULT_READ_C
         raise RuntimeError(f"path is not a file: {path}")
 
     with open(file_path) as file:
-        for _ in islice(file, offset - 1):
-            pass
+        for _ in range(offset - 1):
+            chunk = file.readline(max_chars + 1)
+            if not chunk:
+                break
+            while chunk and not chunk.endswith("\n"):
+                chunk = file.readline(max_chars + 1)
         selected = []
         character_count = 0
         truncated = False
