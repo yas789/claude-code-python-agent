@@ -32,3 +32,25 @@ class WorkspaceToolTests(unittest.TestCase):
             with self.subTest(path=path):
                 with self.assertRaisesRegex(RuntimeError, "path must"):
                     main.list_files(path)
+
+    def make_entries(self):
+        for name in ("gamma", "alpha", "beta"):
+            (self.root / name).touch()
+
+    def test_listing_returns_sorted_selected_entries(self):
+        self.make_entries()
+        self.assertEqual(main.list_files(".", offset=2, limit=1), "beta")
+        self.assertEqual(main.list_files(".", limit=3), "alpha\nbeta\ngamma")
+        self.assertEqual(main.list_files(".", offset=4), "")
+
+    def test_listing_preserves_names_at_character_boundaries(self):
+        self.make_entries()
+        self.assertEqual(main.list_files(".", max_chars=9), "alpha\nbeta")
+        self.assertEqual(main.list_files(".", max_chars=8), "alpha")
+        with self.assertRaisesRegex(RuntimeError, "entry name exceeds max_chars"):
+            main.list_files(".", max_chars=4)
+
+    def test_listing_default_entry_limit(self):
+        for index in range(main.DEFAULT_LIST_ENTRIES + 1):
+            (self.root / f"entry_{index:03}").touch()
+        self.assertEqual(len(main.list_files(".").splitlines()), main.DEFAULT_LIST_ENTRIES)

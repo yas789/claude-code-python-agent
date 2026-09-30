@@ -240,7 +240,17 @@ def list_files(path, offset=1, limit=DEFAULT_LIST_ENTRIES, max_chars=DEFAULT_TOO
     if not directory_path.is_dir():
         raise RuntimeError(f"path is not a directory: {path}")
 
-    return "\n".join(sorted(child.name for child in directory_path.iterdir()))
+    names = sorted(child.name for child in directory_path.iterdir())
+    entries = []
+    character_count = 0
+    for name in names[offset - 1:offset - 1 + limit]:
+        if character_count + len(name) > max_chars:
+            if not entries:
+                raise RuntimeError("entry name exceeds max_chars; increase max_chars")
+            break
+        entries.append(name)
+        character_count += len(name)
+    return "\n".join(entries)
 
 
 def edit_file(path, old_text, new_text):

@@ -30,9 +30,10 @@ silently caps results and loads whole files. Write tools return plain text.
 - [x] 2. Validate listing arguments.
   Verification: invalid types, booleans, offsets, and budgets.
   Result: 2 focused tests passed with invalid-input subcases; diff checks passed.
-- [~] 3. Paginate directory listings.
+- [x] 3. Paginate directory listings.
   Verification: ordering, line/name budgets, and exact boundaries.
-- [ ] 4. Add structured listing metadata and schemas.
+  Result: all 5 focused tests and diff checks passed.
+- [~] 4. Add structured listing metadata and schemas.
   Verification: continuation reconstruction and schema contracts.
 - [ ] 5. Verify listings through the agent loop.
   Verification: empty directories, EOF, and multi-page fake-client tests.
