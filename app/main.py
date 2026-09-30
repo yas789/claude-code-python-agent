@@ -146,7 +146,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "search_files",
-            "description": "Search UTF-8 files in the local workspace for a case-sensitive substring. Returns JSON results with path, line, text, and text_truncated; page truncated means more matching lines remain. Clipped text is a line prefix and may omit the query.",
+            "description": "Search UTF-8 files in the local workspace for a case-sensitive substring. Returns JSON results with path, line, text, and text_truncated, plus truncated and next_offset. Continue with next_offset and the same query/path on an unchanged tree. Clipped text is a line prefix and may omit the query; use read_file at that line for more detail.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -160,6 +160,10 @@ TOOLS = [
                     "path": {
                         "type": "string",
                         "description": "The relative directory path to search.",
+                    },
+                    "offset": {
+                        "type": "integer", "minimum": 1, "default": 1,
+                        "description": "The 1-based matching-line offset, not a file line number. Continuation rescans the unchanged tree.",
                     },
                     "limit": {
                         "type": "integer", "minimum": 1,
@@ -363,7 +367,7 @@ def iter_search_matches(directory_path, query, snippet_chars):
             continue
 
 
-def search_files(query, path, limit=MAX_SEARCH_RESULTS, max_chars=DEFAULT_TOOL_CHARS):
+def search_files(query, path, limit=MAX_SEARCH_RESULTS, max_chars=DEFAULT_TOOL_CHARS, offset=1):
     validate_path(path)
     validate_text("query", query)
     if len(query) > MAX_SEARCH_QUERY:
@@ -372,6 +376,7 @@ def search_files(query, path, limit=MAX_SEARCH_RESULTS, max_chars=DEFAULT_TOOL_C
         raise RuntimeError("query must not contain CR or LF")
     validate_positive_integer("limit", limit, SEARCH_RESULT_CEILING)
     validate_positive_integer("max_chars", max_chars, MAX_TOOL_CHARS)
+    validate_positive_integer("offset", offset)
     directory_path = resolve_workspace_path(path, "directory")
     if not directory_path.is_dir():
         raise RuntimeError(f"path is not a directory: {path}")
@@ -379,7 +384,10 @@ def search_files(query, path, limit=MAX_SEARCH_RESULTS, max_chars=DEFAULT_TOOL_C
     results = []
     character_count = 0
     truncated = False
-    for relative_path, line_number, text, clipped in iter_search_matches(directory_path, query, max_chars):
+    matches = iter_search_matches(directory_path, query, max_chars)
+    for match_number, (relative_path, line_number, text, clipped) in enumerate(matches, start=1):
+        if match_number < offset:
+            continue
         if len(results) >= limit or character_count >= max_chars:
             truncated = True
             break
@@ -392,7 +400,11 @@ def search_files(query, path, limit=MAX_SEARCH_RESULTS, max_chars=DEFAULT_TOOL_C
         })
         character_count += len(snippet)
 
-    return json.dumps({"results": results, "truncated": truncated}, ensure_ascii=False)
+    return json.dumps({
+        "results": results,
+        "truncated": truncated,
+        "next_offset": offset + len(results) if truncated else None,
+    }, ensure_ascii=False)
 
 
 TOOL_FUNCTIONS = {

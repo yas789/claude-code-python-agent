@@ -246,3 +246,41 @@ class WorkspaceToolTests(unittest.TestCase):
         ):
             self.assertEqual(properties[name]["default"], default)
             self.assertEqual(properties[name]["maximum"], ceiling)
+
+    def test_search_continuation_reconstructs_matching_lines(self):
+        (self.root / "a.txt").write_text("target one\nno match\ntarget two\n")
+        (self.root / "b.txt").write_text("target three\n")
+        nested = self.root / "nested"
+        nested.mkdir()
+        (nested / "c.txt").write_text("target four\n")
+        complete = self.search()["results"]
+        first = self.search(limit=2)
+        second = self.search(limit=2, offset=first["next_offset"])
+        self.assertEqual(first["next_offset"], 3)
+        self.assertEqual(first["results"] + second["results"], complete)
+        self.assertFalse(second["truncated"])
+        self.assertIsNone(second["next_offset"])
+
+    def test_search_character_budget_continuation_keeps_match_identity(self):
+        (self.root / "a.txt").write_text("target one\ntarget two\n")
+        first = self.search(max_chars=3)
+        second = self.search(offset=first["next_offset"], max_chars=3)
+        self.assertEqual(first["next_offset"], 2)
+        self.assertEqual([first["results"][0]["line"], second["results"][0]["line"]], [1, 2])
+        self.assertFalse(second["truncated"])
+
+    def test_search_exact_limits_and_offset_past_end_have_no_continuation(self):
+        (self.root / "a.txt").write_text("target")
+        exact = self.search(limit=1, max_chars=6)
+        self.assertFalse(exact["truncated"])
+        self.assertIsNone(exact["next_offset"])
+        self.assertFalse(exact["results"][0]["text_truncated"])
+        self.assertEqual(self.search(offset=10**12), {
+            "results": [], "truncated": False, "next_offset": None,
+        })
+
+    def test_search_rejects_invalid_match_offsets(self):
+        for value in (0, -1, True, False, None, "2", 2.5):
+            with self.subTest(offset=value):
+                with self.assertRaisesRegex(RuntimeError, "offset must be a positive integer"):
+                    self.search(offset=value)
