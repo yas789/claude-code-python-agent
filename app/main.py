@@ -12,19 +12,42 @@ MAX_TOOL_ROUNDS = 10
 WORKSPACE_ROOT = Path.cwd().resolve()
 IGNORED_SEARCH_DIRS = {".git", ".venv", "__pycache__"}
 MAX_SEARCH_RESULTS = 20
+DEFAULT_READ_LINES = 200
+MAX_READ_LINES = 2000
+DEFAULT_READ_CHARS = 16000
+MAX_READ_CHARS = 65536
 
 TOOLS = [
     {
         "type": "function",
         "function": {
             "name": "read_file",
-            "description": "Read the contents of a file from the local workspace.",
+            "description": "Read a bounded line range from the local workspace. Returns JSON with content, start_line, end_line, truncated, and next_offset; use next_offset to continue.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
                         "description": "The relative path of the file to read.",
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "The 1-based starting line (default: 1).",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": MAX_READ_LINES,
+                        "default": DEFAULT_READ_LINES,
+                        "description": "Maximum number of lines to read (default: 200; maximum: 2000).",
+                    },
+                    "max_chars": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": MAX_READ_CHARS,
+                        "default": DEFAULT_READ_CHARS,
+                        "description": "Content character budget including newlines (default: 16000; maximum: 65536). Complete lines only; increase this budget if a selected line is too long.",
                     },
                 },
                 "required": ["path"],
@@ -132,13 +155,56 @@ def resolve_workspace_path(path, path_type):
     return resolved_path
 
 
-def read_file(path):
+def read_file(path, offset=1, limit=DEFAULT_READ_LINES, max_chars=DEFAULT_READ_CHARS):
+    if type(offset) is not int or offset < 1:
+        raise RuntimeError("offset must be a positive integer")
+    if type(limit) is not int or limit < 1:
+        raise RuntimeError("limit must be a positive integer")
+    if limit > MAX_READ_LINES:
+        raise RuntimeError(f"limit must not exceed {MAX_READ_LINES}")
+    if type(max_chars) is not int or max_chars < 1:
+        raise RuntimeError("max_chars must be a positive integer")
+    if max_chars > MAX_READ_CHARS:
+        raise RuntimeError(f"max_chars must not exceed {MAX_READ_CHARS}")
+
     file_path = resolve_workspace_path(path, "file")
     if not file_path.is_file():
         raise RuntimeError(f"path is not a file: {path}")
 
-    with open(file_path) as file:
-        return file.read()
+    with open(file_path, encoding="utf-8") as file:
+        for _ in range(offset - 1):
+            chunk = file.readline(max_chars + 1)
+            if not chunk:
+                break
+            while chunk and not chunk.endswith("\n"):
+                chunk = file.readline(max_chars + 1)
+        selected = []
+        character_count = 0
+        truncated = False
+        for _ in range(limit):
+            line = file.readline(max_chars - character_count + 1)
+            if not line:
+                break
+            if character_count + len(line) > max_chars:
+                if not selected:
+                    raise RuntimeError(
+                        f"line {offset} exceeds max_chars={max_chars}; "
+                        f"increase max_chars up to {MAX_READ_CHARS} or choose another offset"
+                    )
+                truncated = True
+                break
+            selected.append(line)
+            character_count += len(line)
+        else:
+            truncated = bool(file.read(1))
+
+    return json.dumps({
+        "content": "".join(selected),
+        "start_line": offset,
+        "end_line": offset + len(selected) - 1 if selected else None,
+        "truncated": truncated,
+        "next_offset": offset + len(selected) if truncated else None,
+    }, ensure_ascii=False)
 
 
 def list_files(path):

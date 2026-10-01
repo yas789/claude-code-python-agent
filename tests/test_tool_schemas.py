@@ -26,6 +26,24 @@ class ToolSchemaTests(unittest.TestCase):
     def test_read_file_tool_has_matching_python_function(self):
         self.assertIs(main.TOOL_FUNCTIONS["read_file"], main.read_file)
 
+    def test_read_file_ranges_are_optional_positive_integers(self):
+        parameters = tool_schema("read_file")["function"]["parameters"]
+        self.assertEqual(parameters["required"], ["path"])
+        self.assertFalse(parameters["additionalProperties"])
+        for name in ("offset", "limit", "max_chars"):
+            with self.subTest(argument=name):
+                self.assertEqual(parameters["properties"][name]["type"], "integer")
+                self.assertEqual(parameters["properties"][name]["minimum"], 1)
+
+    def test_read_file_schema_budgets_match_runtime(self):
+        properties = tool_schema("read_file")["function"]["parameters"]["properties"]
+        for name, default, maximum in (
+            ("limit", main.DEFAULT_READ_LINES, main.MAX_READ_LINES),
+            ("max_chars", main.DEFAULT_READ_CHARS, main.MAX_READ_CHARS),
+        ):
+            self.assertEqual(properties[name]["default"], default)
+            self.assertEqual(properties[name]["maximum"], maximum)
+
     def test_every_advertised_tool_has_a_python_function(self):
         advertised_tool_names = {tool["function"]["name"] for tool in main.TOOLS}
 
