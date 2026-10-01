@@ -1,8 +1,4 @@
-import sys
 import unittest
-from types import SimpleNamespace
-
-sys.modules["openai"] = SimpleNamespace(OpenAI=object)
 
 from app import main
 

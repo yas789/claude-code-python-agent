@@ -1,8 +1,5 @@
-import sys
 from pathlib import Path
 from types import SimpleNamespace
-
-sys.modules["openai"] = SimpleNamespace(OpenAI=object)
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

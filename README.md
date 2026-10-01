@@ -224,16 +224,25 @@ edit targets are rejected before mutation.
 
 ## Development
 
+Install the locked runtime and development dependencies:
+
+```sh
+uv sync --locked
+```
+
+Run all checks in the project environment; tests use scoped client mocks and
+never replace the installed OpenAI package globally.
+
 Run syntax checks:
 
 ```sh
-python3 -m py_compile app/main.py
+uv run --locked python -m py_compile app/main.py
 ```
 
 Run tests:
 
 ```sh
-python3 -m unittest discover -s tests -p 'test_*.py'
+uv run --locked python -m unittest discover -s tests -p 'test_*.py'
 ```
 
 ## Architecture and Long-Term Plan
