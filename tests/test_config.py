@@ -11,8 +11,9 @@ from tests.helpers import fixture_text
 def assert_parse_error(test_case, argv):
     with patch("sys.argv", argv):
         with patch("sys.stderr", StringIO()):
-            with test_case.assertRaises(SystemExit):
+            with test_case.assertRaises(SystemExit) as error:
                 main.parse_args()
+            test_case.assertEqual(error.exception.code, 2)
 
 
 class ConfigTests(unittest.TestCase):
@@ -94,8 +95,9 @@ class ConfigTests(unittest.TestCase):
 
         with patch("sys.argv", ["agent", "--help"]):
             with patch("sys.stdout", stdout):
-                with self.assertRaises(SystemExit):
+                with self.assertRaises(SystemExit) as error:
                     main.parse_args()
+                self.assertEqual(error.exception.code, 0)
 
         help_text = stdout.getvalue()
         self.assertIn("Run a local coding agent", help_text)
