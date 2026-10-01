@@ -63,9 +63,10 @@ silently caps results and loads whole files. Write tools return plain text.
 - [x] 13. Return structured edit receipts.
   Verification: replacement counts, deletion, and agent integration.
   Result: all 43 focused/tool/agent tests and diff checks passed; receipts do not echo replacement content.
-- [~] 14. Validate creation and return structured receipts.
+- [x] 14. Validate creation and return structured receipts.
   Verification: full content, empty files, existing-file protection, and agent integration.
-- [ ] 15. Document contracts and close the milestone.
+  Result: all 49 focused/tool/agent tests and diff checks passed; full UTF-8 content is preserved and concurrent creation is not overwritten.
+- [~] 15. Document contracts and close the milestone.
   Verification: complete test suite, syntax/diff checks, and exactly 15 commits.
 
 ## Blockers / Failed Checks

@@ -125,7 +125,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "create_file",
-            "description": "Create a new file in the local workspace without overwriting existing files.",
+            "description": "Create a new UTF-8 file in the local workspace without overwriting existing files. Empty content is allowed. Returns a JSON receipt with status, resolved workspace-relative path, and chars_written; content is written in full.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -317,14 +317,28 @@ def edit_file(path, old_text, new_text):
 
 
 def create_file(path, content):
+    validate_path(path)
+    validate_text("content", content, allow_empty=True)
+    try:
+        encoded_content = content.encode("utf-8")
+    except UnicodeEncodeError as error:
+        raise RuntimeError("content must be valid UTF-8 text") from error
     file_path = resolve_workspace_path(path, "file")
     if file_path.exists():
         raise RuntimeError(f"file already exists: {path}")
     if not file_path.parent.is_dir():
         raise RuntimeError(f"parent directory does not exist: {path}")
 
-    file_path.write_text(content)
-    return f"created {path}"
+    try:
+        with open(file_path, "xb") as file:
+            file.write(encoded_content)
+    except FileExistsError as error:
+        raise RuntimeError(f"file already exists: {path}") from error
+    return json.dumps({
+        "status": "created",
+        "path": str(file_path.relative_to(WORKSPACE_ROOT.resolve())),
+        "chars_written": len(content),
+    }, ensure_ascii=False)
 
 
 def iter_search_files(directory_path):

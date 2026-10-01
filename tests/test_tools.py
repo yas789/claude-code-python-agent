@@ -83,7 +83,9 @@ class ToolTests(unittest.TestCase):
             with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
                 result = main.create_file("created.txt", "hello agent")
 
-            self.assertEqual(result, "created created.txt")
+            self.assertEqual(json.loads(result), {
+                "status": "created", "path": "created.txt", "chars_written": 11,
+            })
             self.assertEqual(file_path.read_text(), "hello agent")
 
     def test_create_file_rejects_existing_file(self):
