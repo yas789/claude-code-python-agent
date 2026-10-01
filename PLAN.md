@@ -16,8 +16,8 @@ Every step requires focused tests, formatting/lint checks when available, and
 - [x] 5. Stabilize fake clients and add call-ID lookup. Verify helper regressions.
 - [x] 6. Make contracts unconditional and assert CLI exit codes. Verify focused tests.
 - [x] 7. Extract consistently named limits/defaults. Verify schemas and tests.
-- [~] 8. Extract validation and explicit errors. Verify invalid-input behavior.
-- [ ] 9. Apply shared validation to reads. Verify read boundaries and invalid paths.
+- [x] 8. Extract validation and explicit errors. Verify invalid-input behavior.
+- [~] 9. Apply shared validation to reads. Verify read boundaries and invalid paths.
 - [ ] 10. Centralize registry and argument decoding. Verify malformed calls in verbose mode.
 - [ ] 11. Extract bounded logging and JSON-aware summaries. Verify diagnostics.
 - [ ] 12. Introduce explicit workspace context. Verify independent workspaces.
@@ -39,3 +39,4 @@ Every step requires focused tests, formatting/lint checks when available, and
 5. Stable fake snapshots and call-ID lookup verified; 142 tests and quality checks passed.
 6. All 16 focused CLI/contract tests and quality checks passed; no implemented-tool skips remain.
 7. Static configuration extracted with unchanged values/schemas; 142 tests and quality checks passed.
+8. Typed validators and explicit errors extracted; 150 tests and quality checks passed.

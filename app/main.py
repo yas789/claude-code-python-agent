@@ -23,6 +23,8 @@ from app.config import (
     MAX_TOOL_CHARS,
     SEARCH_CHUNK_CHARS,
 )
+from app.errors import ToolError
+from app.validation import validate_path, validate_positive_integer, validate_text
 
 BASE_URL = os.getenv("OPENROUTER_BASE_URL", default="https://openrouter.ai/api/v1")
 WORKSPACE_ROOT = Path.cwd().resolve()
@@ -204,26 +206,26 @@ def resolve_workspace_path(path, path_type):
     workspace_root = WORKSPACE_ROOT.resolve()
     resolved_path = (workspace_root / path).resolve()
     if not resolved_path.is_relative_to(workspace_root):
-        raise RuntimeError(f"{path_type} is outside workspace: {path}")
+        raise ToolError(f"{path_type} is outside workspace: {path}")
 
     return resolved_path
 
 
 def read_file(path, offset=1, limit=DEFAULT_READ_LINES, max_chars=DEFAULT_READ_CHARS):
     if type(offset) is not int or offset < 1:
-        raise RuntimeError("offset must be a positive integer")
+        raise ToolError("offset must be a positive integer")
     if type(limit) is not int or limit < 1:
-        raise RuntimeError("limit must be a positive integer")
+        raise ToolError("limit must be a positive integer")
     if limit > MAX_READ_LINES:
-        raise RuntimeError(f"limit must not exceed {MAX_READ_LINES}")
+        raise ToolError(f"limit must not exceed {MAX_READ_LINES}")
     if type(max_chars) is not int or max_chars < 1:
-        raise RuntimeError("max_chars must be a positive integer")
+        raise ToolError("max_chars must be a positive integer")
     if max_chars > MAX_READ_CHARS:
-        raise RuntimeError(f"max_chars must not exceed {MAX_READ_CHARS}")
+        raise ToolError(f"max_chars must not exceed {MAX_READ_CHARS}")
 
     file_path = resolve_workspace_path(path, "file")
     if not file_path.is_file():
-        raise RuntimeError(f"path is not a file: {path}")
+        raise ToolError(f"path is not a file: {path}")
 
     with open(file_path, encoding="utf-8") as file:
         for _ in range(offset - 1):
@@ -241,7 +243,7 @@ def read_file(path, offset=1, limit=DEFAULT_READ_LINES, max_chars=DEFAULT_READ_C
                 break
             if character_count + len(line) > max_chars:
                 if not selected:
-                    raise RuntimeError(
+                    raise ToolError(
                         f"line {offset} exceeds max_chars={max_chars}; "
                         f"increase max_chars up to {MAX_READ_CHARS} or choose another offset"
                     )
@@ -264,26 +266,6 @@ def read_file(path, offset=1, limit=DEFAULT_READ_LINES, max_chars=DEFAULT_READ_C
     )
 
 
-def validate_positive_integer(name, value, maximum=None):
-    if type(value) is not int or value < 1:
-        raise RuntimeError(f"{name} must be a positive integer")
-    if maximum is not None and value > maximum:
-        raise RuntimeError(f"{name} must not exceed {maximum}")
-
-
-def validate_text(name, value, allow_empty=False):
-    if not isinstance(value, str):
-        raise RuntimeError(f"{name} must be a string")
-    if not allow_empty and not value:
-        raise RuntimeError(f"{name} must not be empty")
-
-
-def validate_path(path):
-    validate_text("path", path)
-    if "\0" in path:
-        raise RuntimeError("path must not contain null characters")
-
-
 def list_files(path, offset=1, limit=DEFAULT_LIST_ENTRIES, max_chars=DEFAULT_TOOL_CHARS):
     validate_path(path)
     validate_positive_integer("offset", offset)
@@ -291,7 +273,7 @@ def list_files(path, offset=1, limit=DEFAULT_LIST_ENTRIES, max_chars=DEFAULT_TOO
     validate_positive_integer("max_chars", max_chars, MAX_TOOL_CHARS)
     directory_path = resolve_workspace_path(path, "directory")
     if not directory_path.is_dir():
-        raise RuntimeError(f"path is not a directory: {path}")
+        raise ToolError(f"path is not a directory: {path}")
 
     names = sorted(child.name for child in directory_path.iterdir())
     entries = []
@@ -299,7 +281,7 @@ def list_files(path, offset=1, limit=DEFAULT_LIST_ENTRIES, max_chars=DEFAULT_TOO
     for name in names[offset - 1 : offset - 1 + limit]:
         if character_count + len(name) > max_chars:
             if not entries:
-                raise RuntimeError("entry name exceeds max_chars; increase max_chars")
+                raise ToolError("entry name exceeds max_chars; increase max_chars")
             break
         entries.append(name)
         character_count += len(name)
@@ -320,14 +302,14 @@ def edit_file(path, old_text, new_text):
     validate_text("new_text", new_text, allow_empty=True)
     file_path = resolve_workspace_path(path, "file")
     if not file_path.is_file():
-        raise RuntimeError(f"path is not a file: {path}")
+        raise ToolError(f"path is not a file: {path}")
 
     content = file_path.read_text(encoding="utf-8")
     occurrences = content.count(old_text)
     if occurrences == 0:
-        raise RuntimeError("old_text not found")
+        raise ToolError("old_text not found")
     if occurrences > 1:
-        raise RuntimeError("old_text appears multiple times")
+        raise ToolError("old_text appears multiple times")
 
     file_path.write_text(content.replace(old_text, new_text, 1), encoding="utf-8")
     return json.dumps(
@@ -346,18 +328,18 @@ def create_file(path, content):
     try:
         encoded_content = content.encode("utf-8")
     except UnicodeEncodeError as error:
-        raise RuntimeError("content must be valid UTF-8 text") from error
+        raise ToolError("content must be valid UTF-8 text") from error
     file_path = resolve_workspace_path(path, "file")
     if file_path.exists():
-        raise RuntimeError(f"file already exists: {path}")
+        raise ToolError(f"file already exists: {path}")
     if not file_path.parent.is_dir():
-        raise RuntimeError(f"parent directory does not exist: {path}")
+        raise ToolError(f"parent directory does not exist: {path}")
 
     try:
         with open(file_path, "xb") as file:
             file.write(encoded_content)
     except FileExistsError as error:
-        raise RuntimeError(f"file already exists: {path}") from error
+        raise ToolError(f"file already exists: {path}") from error
     return json.dumps(
         {
             "status": "created",
@@ -378,7 +360,7 @@ def iter_search_files(directory_path):
                 resolved_path = resolve_workspace_path(str(file_path), "file")
                 if resolved_path.is_file():
                     yield file_path.relative_to(workspace_root), resolved_path
-            except RuntimeError, OSError:
+            except ToolError, OSError:
                 continue
 
 
@@ -420,15 +402,15 @@ def search_files(query, path, limit=DEFAULT_SEARCH_RESULTS, max_chars=DEFAULT_TO
     validate_path(path)
     validate_text("query", query)
     if len(query) > MAX_SEARCH_QUERY_CHARS:
-        raise RuntimeError(f"query must not exceed {MAX_SEARCH_QUERY_CHARS} characters")
+        raise ToolError(f"query must not exceed {MAX_SEARCH_QUERY_CHARS} characters")
     if "\n" in query or "\r" in query:
-        raise RuntimeError("query must not contain CR or LF")
+        raise ToolError("query must not contain CR or LF")
     validate_positive_integer("limit", limit, MAX_SEARCH_RESULTS)
     validate_positive_integer("max_chars", max_chars, MAX_TOOL_CHARS)
     validate_positive_integer("offset", offset)
     directory_path = resolve_workspace_path(path, "directory")
     if not directory_path.is_dir():
-        raise RuntimeError(f"path is not a directory: {path}")
+        raise ToolError(f"path is not a directory: {path}")
 
     results = []
     character_count = 0
