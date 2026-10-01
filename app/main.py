@@ -98,7 +98,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "edit_file",
-            "description": "Replace exact text in a file in the local workspace.",
+            "description": "Replace one nonempty exact text match in a UTF-8 file in the local workspace. Returns a JSON receipt with status, resolved workspace-relative path, and replacements. An empty new_text deletes the match.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -301,15 +301,19 @@ def edit_file(path, old_text, new_text):
     if not file_path.is_file():
         raise RuntimeError(f"path is not a file: {path}")
 
-    content = file_path.read_text()
+    content = file_path.read_text(encoding="utf-8")
     occurrences = content.count(old_text)
     if occurrences == 0:
         raise RuntimeError("old_text not found")
     if occurrences > 1:
         raise RuntimeError("old_text appears multiple times")
 
-    file_path.write_text(content.replace(old_text, new_text, 1))
-    return f"updated {path}"
+    file_path.write_text(content.replace(old_text, new_text, 1), encoding="utf-8")
+    return json.dumps({
+        "status": "updated",
+        "path": str(file_path.relative_to(WORKSPACE_ROOT.resolve())),
+        "replacements": 1,
+    }, ensure_ascii=False)
 
 
 def create_file(path, content):

@@ -60,9 +60,10 @@ silently caps results and loads whole files. Write tools return plain text.
 - [x] 12. Validate edit arguments before writing.
   Verification: empty targets, incorrect types, and unchanged files on failure.
   Result: all 26 focused/tool-contract tests and diff checks passed; validation failures preserve file contents.
-- [~] 13. Return structured edit receipts.
+- [x] 13. Return structured edit receipts.
   Verification: replacement counts, deletion, and agent integration.
-- [ ] 14. Validate creation and return structured receipts.
+  Result: all 43 focused/tool/agent tests and diff checks passed; receipts do not echo replacement content.
+- [~] 14. Validate creation and return structured receipts.
   Verification: full content, empty files, existing-file protection, and agent integration.
 - [ ] 15. Document contracts and close the milestone.
   Verification: complete test suite, syntax/diff checks, and exactly 15 commits.

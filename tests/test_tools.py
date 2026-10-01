@@ -41,7 +41,9 @@ class ToolTests(unittest.TestCase):
             with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
                 result = main.edit_file("example.txt", "world", "agent")
 
-            self.assertEqual(result, "updated example.txt")
+            self.assertEqual(json.loads(result), {
+                "status": "updated", "path": "example.txt", "replacements": 1,
+            })
             self.assertEqual(file_path.read_text(), "hello agent")
 
     def test_edit_file_rejects_missing_old_text(self):

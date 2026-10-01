@@ -51,3 +51,38 @@ class WriteToolTests(unittest.TestCase):
         self.assertEqual(client.completions.calls[1]["messages"][2]["content"],
                          "error: old_text must not be empty")
         self.assertEqual(self.file.read_text(), "hello world")
+
+    def test_edit_receipt_is_compact_and_does_not_echo_content(self):
+        replacement = "private text " * 10000
+        result = main.edit_file("./example.txt", "world", replacement)
+        self.assertEqual(json.loads(result), {
+            "status": "updated", "path": "example.txt", "replacements": 1,
+        })
+        self.assertLess(len(result), 200)
+        self.assertNotIn("private text", result)
+        self.assertEqual(self.file.read_text(), "hello " + replacement)
+
+    def test_edit_allows_deletion_and_unicode_replacement(self):
+        main.edit_file("example.txt", "world", "")
+        self.assertEqual(self.file.read_text(), "hello ")
+        result = json.loads(main.edit_file("example.txt", "hello", "🙂終"))
+        self.assertEqual(result["replacements"], 1)
+        self.assertEqual(self.file.read_text(encoding="utf-8"), "🙂終 ")
+
+    def test_agent_recovers_from_invalid_edit_and_receives_receipt(self):
+        client = helpers.FakeClient([
+            helpers.assistant_message(None, [helpers.tool_call(
+                "invalid", "edit_file",
+                '{"path": "example.txt", "old_text": "", "new_text": "agent"}',
+            )]),
+            helpers.assistant_message(None, [helpers.tool_call(
+                "valid", "edit_file",
+                '{"path": "example.txt", "old_text": "world", "new_text": "agent"}',
+            )]),
+            helpers.assistant_message("Updated example.txt."),
+        ])
+        self.assertEqual(main.run_agent(client, "Update the file"), "Updated example.txt.")
+        receipt = json.loads(client.completions.calls[2]["messages"][4]["content"])
+        self.assertEqual(receipt["status"], "updated")
+        self.assertEqual(receipt["replacements"], 1)
+        self.assertEqual(self.file.read_text(), "hello agent")
