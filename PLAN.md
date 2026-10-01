@@ -66,8 +66,21 @@ silently caps results and loads whole files. Write tools return plain text.
 - [x] 14. Validate creation and return structured receipts.
   Verification: full content, empty files, existing-file protection, and agent integration.
   Result: all 49 focused/tool/agent tests and diff checks passed; full UTF-8 content is preserved and concurrent creation is not overwritten.
-- [~] 15. Document contracts and close the milestone.
+- [x] 15. Document contracts and close the milestone.
   Verification: complete test suite, syntax/diff checks, and exactly 15 commits.
+  Result: all 136 tests passed (92 at baseline); syntax and working-tree/branch
+  diff checks passed. Verified 14 preceding commits from `cf3e327`; this final
+  documentation commit completes the 15-commit batch.
+
+## Delivered State
+
+Listing returns bounded sorted pages with continuation. Search streams matching
+lines in bounded chunks, enforces workspace containment, prunes ignored
+directories, and returns paginated JSON with explicit snippet clipping. Edits
+and creation validate argument types and return compact JSON receipts; creation
+uses exclusive writes. Successful results across all five tools are JSON text.
+The README documents defaults, ceilings, changed return formats, and pagination
+assumptions; the roadmap records completed output and traversal work.
 
 ## Blockers / Failed Checks
 
