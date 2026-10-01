@@ -4,7 +4,7 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
-from app import main
+from app import config, main
 from tests import helpers
 
 
@@ -16,7 +16,7 @@ class SearchReader(StringIO):
         raise AssertionError("search must not use whole-file reads")
 
     def readline(self, size=-1):
-        if not 0 < size <= main.SEARCH_CHUNK_CHARS:
+        if not 0 < size <= config.SEARCH_CHUNK_CHARS:
             raise AssertionError("search line reads must be bounded")
         return super().readline(size)
 
@@ -31,7 +31,10 @@ class WorkspaceToolTests(helpers.WorkspaceTestCase):
                 with self.subTest(argument=name, value=value):
                     with self.assertRaisesRegex(RuntimeError, f"{name} must be a positive integer"):
                         self.tools.list_files(".", **{name: value})
-        for name, maximum in (("limit", main.MAX_LIST_ENTRIES), ("max_chars", main.MAX_TOOL_CHARS)):
+        for name, maximum in (
+            ("limit", config.MAX_LIST_ENTRIES),
+            ("max_chars", config.MAX_TOOL_CHARS),
+        ):
             with self.assertRaisesRegex(RuntimeError, f"{name} must not exceed"):
                 self.tools.list_files(".", **{name: maximum + 1})
 
@@ -62,9 +65,9 @@ class WorkspaceToolTests(helpers.WorkspaceTestCase):
             self.tools.list_files(".", max_chars=4)
 
     def test_listing_default_entry_limit(self):
-        for index in range(main.DEFAULT_LIST_ENTRIES + 1):
+        for index in range(config.DEFAULT_LIST_ENTRIES + 1):
             (self.root / f"entry_{index:03}").touch()
-        self.assertEqual(len(self.listing()["entries"]), main.DEFAULT_LIST_ENTRIES)
+        self.assertEqual(len(self.listing()["entries"]), config.DEFAULT_LIST_ENTRIES)
 
     def test_listing_continuation_reconstructs_entries(self):
         self.make_entries()
@@ -82,8 +85,8 @@ class WorkspaceToolTests(helpers.WorkspaceTestCase):
         self.assertEqual(parameters["required"], ["path"])
         self.assertFalse(parameters["additionalProperties"])
         for name, default, ceiling in (
-            ("limit", main.DEFAULT_LIST_ENTRIES, main.MAX_LIST_ENTRIES),
-            ("max_chars", main.DEFAULT_TOOL_CHARS, main.MAX_TOOL_CHARS),
+            ("limit", config.DEFAULT_LIST_ENTRIES, config.MAX_LIST_ENTRIES),
+            ("max_chars", config.DEFAULT_TOOL_CHARS, config.MAX_TOOL_CHARS),
         ):
             field = parameters["properties"][name]
             self.assertEqual((field["type"], field["minimum"]), ("integer", 1))
@@ -163,7 +166,16 @@ class WorkspaceToolTests(helpers.WorkspaceTestCase):
         )
 
     def test_search_rejects_invalid_queries(self):
-        for query in (None, False, 1, [], "", "a\nb", "a\rb", "x" * (main.MAX_SEARCH_QUERY + 1)):
+        for query in (
+            None,
+            False,
+            1,
+            [],
+            "",
+            "a\nb",
+            "a\rb",
+            "x" * (config.MAX_SEARCH_QUERY_CHARS + 1),
+        ):
             with self.subTest(query=repr(query)[:30]):
                 with self.assertRaisesRegex(RuntimeError, "query must"):
                     self.tools.search_files(query, ".")
@@ -178,8 +190,8 @@ class WorkspaceToolTests(helpers.WorkspaceTestCase):
                     with self.assertRaisesRegex(RuntimeError, f"{name} must be a positive integer"):
                         self.tools.search_files("target", ".", **{name: value})
         for name, maximum in (
-            ("limit", main.SEARCH_RESULT_CEILING),
-            ("max_chars", main.MAX_TOOL_CHARS),
+            ("limit", config.MAX_SEARCH_RESULTS),
+            ("max_chars", config.MAX_TOOL_CHARS),
         ):
             with self.assertRaisesRegex(RuntimeError, f"{name} must not exceed"):
                 self.tools.search_files("target", ".", **{name: maximum + 1})
@@ -220,7 +232,7 @@ class WorkspaceToolTests(helpers.WorkspaceTestCase):
         self.assertEqual([match["path"] for match in result], ["alias.txt", "source.txt"])
 
     def test_search_prunes_ignored_directories_before_visiting(self):
-        for name in main.IGNORED_SEARCH_DIRS:
+        for name in config.IGNORED_SEARCH_DIRS:
             directory = self.root / name
             directory.mkdir()
             (directory / "ignored.txt").write_text("target")
@@ -241,7 +253,7 @@ class WorkspaceToolTests(helpers.WorkspaceTestCase):
         self.assertEqual(json.loads(result)["results"][0]["path"], "visible/found.txt")
 
     def test_streamed_search_matches_across_chunk_boundaries(self):
-        content = "x" * (main.SEARCH_CHUNK_CHARS - 3) + "target\nnext target\n"
+        content = "x" * (config.SEARCH_CHUNK_CHARS - 3) + "target\nnext target\n"
         reader = SearchReader(content)
         matches = list(main.iter_matching_lines(reader, "target", 10))
         self.assertEqual(matches, [(1, "x" * 10, True), (2, "next targe", True)])
@@ -275,10 +287,10 @@ class WorkspaceToolTests(helpers.WorkspaceTestCase):
         self.assertEqual(parameters["required"], ["query", "path"])
         self.assertFalse(parameters["additionalProperties"])
         properties = parameters["properties"]
-        self.assertEqual(properties["query"]["maxLength"], main.MAX_SEARCH_QUERY)
+        self.assertEqual(properties["query"]["maxLength"], config.MAX_SEARCH_QUERY_CHARS)
         for name, default, ceiling in (
-            ("limit", main.MAX_SEARCH_RESULTS, main.SEARCH_RESULT_CEILING),
-            ("max_chars", main.DEFAULT_TOOL_CHARS, main.MAX_TOOL_CHARS),
+            ("limit", config.DEFAULT_SEARCH_RESULTS, config.MAX_SEARCH_RESULTS),
+            ("max_chars", config.DEFAULT_TOOL_CHARS, config.MAX_TOOL_CHARS),
         ):
             self.assertEqual(properties[name]["default"], default)
             self.assertEqual(properties[name]["maximum"], ceiling)
@@ -357,7 +369,7 @@ class WorkspaceToolTests(helpers.WorkspaceTestCase):
         self.assertFalse(result["truncated"])
 
     def test_search_maximum_query_matches_across_chunks(self):
-        query = "a" * main.MAX_SEARCH_QUERY
+        query = "a" * config.MAX_SEARCH_QUERY_CHARS
         reader = SearchReader("x" + query + "\n")
         result = list(main.iter_matching_lines(reader, query, 5))
         self.assertEqual(result, [(1, "xaaaa", True)])

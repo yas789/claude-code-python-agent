@@ -1,7 +1,7 @@
 import json
 import unittest
 
-from app import main
+from app import config
 from tests.helpers import WorkspaceTestCase
 
 
@@ -146,12 +146,12 @@ class ToolTests(WorkspaceTestCase):
         self.assertEqual(json.loads(self.tools.search_files("target", "."))["results"], [])
 
     def test_search_files_limits_results(self):
-        for index in range(main.MAX_SEARCH_RESULTS + 5):
+        for index in range(config.DEFAULT_SEARCH_RESULTS + 5):
             file_path = self.root / f"example_{index}.txt"
             file_path.write_text("target")
         result = self.tools.search_files("target", ".")
 
-        self.assertEqual(len(json.loads(result)["results"]), main.MAX_SEARCH_RESULTS)
+        self.assertEqual(len(json.loads(result)["results"]), config.DEFAULT_SEARCH_RESULTS)
 
 
 if __name__ == "__main__":

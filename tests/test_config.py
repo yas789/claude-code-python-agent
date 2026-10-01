@@ -4,7 +4,7 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
-from app import main
+from app import config, main
 from tests.helpers import fixture_text
 
 
@@ -18,7 +18,7 @@ def assert_parse_error(test_case, argv):
 
 class ConfigTests(unittest.TestCase):
     def test_tool_loop_has_a_maximum_round_limit(self):
-        self.assertGreater(main.MAX_TOOL_ROUNDS, 0)
+        self.assertGreater(config.DEFAULT_MAX_TOOL_ROUNDS, 0)
 
     def test_create_client_requires_api_key(self):
         with patch.dict("os.environ", {}, clear=True):

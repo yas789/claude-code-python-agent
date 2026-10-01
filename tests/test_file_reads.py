@@ -4,7 +4,7 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
-from app import main
+from app import config, main
 from tests import helpers
 
 
@@ -86,15 +86,15 @@ class FileReadTests(helpers.WorkspaceTestCase):
                     self.tools.read_file("example.txt", limit=value)
 
     def test_default_line_budget(self):
-        self.file.write_text("line\n" * (main.DEFAULT_READ_LINES + 1))
+        self.file.write_text("line\n" * (config.DEFAULT_READ_LINES + 1))
         result = self.read()
-        self.assertEqual(len(result["content"].splitlines()), main.DEFAULT_READ_LINES)
+        self.assertEqual(len(result["content"].splitlines()), config.DEFAULT_READ_LINES)
         self.assertTrue(result["truncated"])
-        self.assertEqual(result["next_offset"], main.DEFAULT_READ_LINES + 1)
+        self.assertEqual(result["next_offset"], config.DEFAULT_READ_LINES + 1)
 
     def test_rejects_limit_above_ceiling(self):
         with self.assertRaisesRegex(RuntimeError, "limit must not exceed"):
-            self.tools.read_file("example.txt", limit=main.MAX_READ_LINES + 1)
+            self.tools.read_file("example.txt", limit=config.MAX_READ_LINES + 1)
 
     def test_exact_line_boundary_is_not_truncated(self):
         result = self.read(limit=3)
@@ -128,12 +128,12 @@ class FileReadTests(helpers.WorkspaceTestCase):
                 with self.assertRaisesRegex(RuntimeError, "max_chars must be a positive integer"):
                     self.read(max_chars=value)
         with self.assertRaisesRegex(RuntimeError, "max_chars must not exceed"):
-            self.read(max_chars=main.MAX_READ_CHARS + 1)
+            self.read(max_chars=config.MAX_READ_CHARS + 1)
 
     def test_default_character_budget(self):
         self.file.write_text(("x" * 999 + "\n") * 20)
         result = self.read()
-        self.assertEqual(len(result["content"]), main.DEFAULT_READ_CHARS)
+        self.assertEqual(len(result["content"]), config.DEFAULT_READ_CHARS)
         self.assertEqual(result["next_offset"], 17)
 
     def test_small_range_does_not_read_the_rest_of_file(self):

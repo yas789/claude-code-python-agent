@@ -6,23 +6,26 @@ from pathlib import Path
 
 from openai import OpenAI
 
+from app.config import (
+    DEFAULT_LIST_ENTRIES,
+    DEFAULT_MAX_TOOL_ROUNDS,
+    DEFAULT_MODEL,
+    DEFAULT_READ_CHARS,
+    DEFAULT_READ_LINES,
+    DEFAULT_SEARCH_RESULTS,
+    DEFAULT_TOOL_CHARS,
+    IGNORED_SEARCH_DIRS,
+    MAX_LIST_ENTRIES,
+    MAX_READ_CHARS,
+    MAX_READ_LINES,
+    MAX_SEARCH_QUERY_CHARS,
+    MAX_SEARCH_RESULTS,
+    MAX_TOOL_CHARS,
+    SEARCH_CHUNK_CHARS,
+)
+
 BASE_URL = os.getenv("OPENROUTER_BASE_URL", default="https://openrouter.ai/api/v1")
-MODEL = "anthropic/claude-haiku-4.5"
-MAX_TOOL_ROUNDS = 10
 WORKSPACE_ROOT = Path.cwd().resolve()
-IGNORED_SEARCH_DIRS = {".git", ".venv", "__pycache__"}
-MAX_SEARCH_RESULTS = 20
-DEFAULT_READ_LINES = 200
-MAX_READ_LINES = 2000
-DEFAULT_READ_CHARS = 16000
-MAX_READ_CHARS = 65536
-DEFAULT_LIST_ENTRIES = 100
-MAX_LIST_ENTRIES = 2000
-DEFAULT_TOOL_CHARS = 16000
-MAX_TOOL_CHARS = 65536
-SEARCH_RESULT_CEILING = 200
-MAX_SEARCH_QUERY = 4096
-SEARCH_CHUNK_CHARS = 4096
 
 TOOLS = [
     {
@@ -160,7 +163,7 @@ TOOLS = [
                     "query": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": MAX_SEARCH_QUERY,
+                        "maxLength": MAX_SEARCH_QUERY_CHARS,
                         "pattern": "^[^\r\n]+$",
                         "description": "Nonempty, case-sensitive substring without CR/LF (maximum: 4096 characters).",
                     },
@@ -177,8 +180,8 @@ TOOLS = [
                     "limit": {
                         "type": "integer",
                         "minimum": 1,
-                        "maximum": SEARCH_RESULT_CEILING,
-                        "default": MAX_SEARCH_RESULTS,
+                        "maximum": MAX_SEARCH_RESULTS,
+                        "default": DEFAULT_SEARCH_RESULTS,
                         "description": "Maximum matching lines (default: 20; maximum: 200).",
                     },
                     "max_chars": {
@@ -413,14 +416,14 @@ def iter_search_matches(directory_path, query, snippet_chars):
             continue
 
 
-def search_files(query, path, limit=MAX_SEARCH_RESULTS, max_chars=DEFAULT_TOOL_CHARS, offset=1):
+def search_files(query, path, limit=DEFAULT_SEARCH_RESULTS, max_chars=DEFAULT_TOOL_CHARS, offset=1):
     validate_path(path)
     validate_text("query", query)
-    if len(query) > MAX_SEARCH_QUERY:
-        raise RuntimeError(f"query must not exceed {MAX_SEARCH_QUERY} characters")
+    if len(query) > MAX_SEARCH_QUERY_CHARS:
+        raise RuntimeError(f"query must not exceed {MAX_SEARCH_QUERY_CHARS} characters")
     if "\n" in query or "\r" in query:
         raise RuntimeError("query must not contain CR or LF")
-    validate_positive_integer("limit", limit, SEARCH_RESULT_CEILING)
+    validate_positive_integer("limit", limit, MAX_SEARCH_RESULTS)
     validate_positive_integer("max_chars", max_chars, MAX_TOOL_CHARS)
     validate_positive_integer("offset", offset)
     directory_path = resolve_workspace_path(path, "directory")
@@ -479,10 +482,10 @@ def parse_args():
     parser.add_argument(
         "--max-tool-rounds",
         type=int,
-        default=MAX_TOOL_ROUNDS,
+        default=DEFAULT_MAX_TOOL_ROUNDS,
         help="Maximum number of tool-call rounds before stopping.",
     )
-    parser.add_argument("--model", default=MODEL, help="OpenRouter model name to use.")
+    parser.add_argument("--model", default=DEFAULT_MODEL, help="OpenRouter model name to use.")
     parser.add_argument(
         "--workspace",
         default=str(WORKSPACE_ROOT),
@@ -510,7 +513,7 @@ def create_client():
     return OpenAI(api_key=api_key, base_url=BASE_URL)
 
 
-def create_chat_completion(client, messages, model=MODEL):
+def create_chat_completion(client, messages, model=DEFAULT_MODEL):
     return client.chat.completions.create(
         model=model,
         messages=messages,
@@ -581,7 +584,9 @@ def append_tool_results(messages, message, verbose=False):
         )
 
 
-def run_agent(client, prompt, verbose=False, max_tool_rounds=MAX_TOOL_ROUNDS, model=MODEL):
+def run_agent(
+    client, prompt, verbose=False, max_tool_rounds=DEFAULT_MAX_TOOL_ROUNDS, model=DEFAULT_MODEL
+):
     messages = [{"role": "user", "content": prompt}]
 
     for _ in range(max_tool_rounds):

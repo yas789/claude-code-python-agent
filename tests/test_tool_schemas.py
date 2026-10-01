@@ -1,6 +1,6 @@
 import unittest
 
-from app import main
+from app import config, main
 
 
 def tool_schema(name):
@@ -38,8 +38,8 @@ class ToolSchemaTests(unittest.TestCase):
     def test_read_file_schema_budgets_match_runtime(self):
         properties = tool_schema("read_file")["function"]["parameters"]["properties"]
         for name, default, maximum in (
-            ("limit", main.DEFAULT_READ_LINES, main.MAX_READ_LINES),
-            ("max_chars", main.DEFAULT_READ_CHARS, main.MAX_READ_CHARS),
+            ("limit", config.DEFAULT_READ_LINES, config.MAX_READ_LINES),
+            ("max_chars", config.DEFAULT_READ_CHARS, config.MAX_READ_CHARS),
         ):
             self.assertEqual(properties[name]["default"], default)
             self.assertEqual(properties[name]["maximum"], maximum)
