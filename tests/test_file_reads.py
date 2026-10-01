@@ -32,6 +32,12 @@ class BoundedReader(StreamingReader):
 
 
 class FileReadTests(helpers.WorkspaceTestCase):
+    def test_read_rejects_invalid_paths(self):
+        for path in (None, False, 1, "", "bad\0path"):
+            with self.subTest(path=path):
+                with self.assertRaisesRegex(RuntimeError, "path must"):
+                    self.tools.read_file(path)
+
     def setUp(self):
         super().setUp()
         self.file = self.root / "example.txt"

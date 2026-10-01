@@ -212,16 +212,10 @@ def resolve_workspace_path(path, path_type):
 
 
 def read_file(path, offset=1, limit=DEFAULT_READ_LINES, max_chars=DEFAULT_READ_CHARS):
-    if type(offset) is not int or offset < 1:
-        raise ToolError("offset must be a positive integer")
-    if type(limit) is not int or limit < 1:
-        raise ToolError("limit must be a positive integer")
-    if limit > MAX_READ_LINES:
-        raise ToolError(f"limit must not exceed {MAX_READ_LINES}")
-    if type(max_chars) is not int or max_chars < 1:
-        raise ToolError("max_chars must be a positive integer")
-    if max_chars > MAX_READ_CHARS:
-        raise ToolError(f"max_chars must not exceed {MAX_READ_CHARS}")
+    validate_path(path)
+    validate_positive_integer("offset", offset)
+    validate_positive_integer("limit", limit, MAX_READ_LINES)
+    validate_positive_integer("max_chars", max_chars, MAX_READ_CHARS)
 
     file_path = resolve_workspace_path(path, "file")
     if not file_path.is_file():
