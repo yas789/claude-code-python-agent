@@ -1,8 +1,8 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 
 from openai import OpenAI
 
@@ -75,17 +75,23 @@ TOOLS = [
                         "description": "The relative directory path to list.",
                     },
                     "offset": {
-                        "type": "integer", "minimum": 1, "default": 1,
+                        "type": "integer",
+                        "minimum": 1,
+                        "default": 1,
                         "description": "The 1-based starting entry.",
                     },
                     "limit": {
-                        "type": "integer", "minimum": 1,
-                        "maximum": MAX_LIST_ENTRIES, "default": DEFAULT_LIST_ENTRIES,
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": MAX_LIST_ENTRIES,
+                        "default": DEFAULT_LIST_ENTRIES,
                         "description": "Maximum entries to return (default: 100; maximum: 2000).",
                     },
                     "max_chars": {
-                        "type": "integer", "minimum": 1,
-                        "maximum": MAX_TOOL_CHARS, "default": DEFAULT_TOOL_CHARS,
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": MAX_TOOL_CHARS,
+                        "default": DEFAULT_TOOL_CHARS,
                         "description": "Entry-name character budget, excluding JSON overhead (default: 16000; maximum: 65536).",
                     },
                 },
@@ -163,17 +169,23 @@ TOOLS = [
                         "description": "The relative directory path to search.",
                     },
                     "offset": {
-                        "type": "integer", "minimum": 1, "default": 1,
+                        "type": "integer",
+                        "minimum": 1,
+                        "default": 1,
                         "description": "The 1-based matching-line offset, not a file line number. Continuation rescans the unchanged tree.",
                     },
                     "limit": {
-                        "type": "integer", "minimum": 1,
-                        "maximum": SEARCH_RESULT_CEILING, "default": MAX_SEARCH_RESULTS,
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": SEARCH_RESULT_CEILING,
+                        "default": MAX_SEARCH_RESULTS,
                         "description": "Maximum matching lines (default: 20; maximum: 200).",
                     },
                     "max_chars": {
-                        "type": "integer", "minimum": 1,
-                        "maximum": MAX_TOOL_CHARS, "default": DEFAULT_TOOL_CHARS,
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": MAX_TOOL_CHARS,
+                        "default": DEFAULT_TOOL_CHARS,
                         "description": "Total snippet-character budget excluding metadata and JSON overhead (default: 16000; maximum: 65536).",
                     },
                 },
@@ -181,7 +193,7 @@ TOOLS = [
                 "additionalProperties": False,
             },
         },
-    }
+    },
 ]
 
 
@@ -237,13 +249,16 @@ def read_file(path, offset=1, limit=DEFAULT_READ_LINES, max_chars=DEFAULT_READ_C
         else:
             truncated = bool(file.read(1))
 
-    return json.dumps({
-        "content": "".join(selected),
-        "start_line": offset,
-        "end_line": offset + len(selected) - 1 if selected else None,
-        "truncated": truncated,
-        "next_offset": offset + len(selected) if truncated else None,
-    }, ensure_ascii=False)
+    return json.dumps(
+        {
+            "content": "".join(selected),
+            "start_line": offset,
+            "end_line": offset + len(selected) - 1 if selected else None,
+            "truncated": truncated,
+            "next_offset": offset + len(selected) if truncated else None,
+        },
+        ensure_ascii=False,
+    )
 
 
 def validate_positive_integer(name, value, maximum=None):
@@ -278,7 +293,7 @@ def list_files(path, offset=1, limit=DEFAULT_LIST_ENTRIES, max_chars=DEFAULT_TOO
     names = sorted(child.name for child in directory_path.iterdir())
     entries = []
     character_count = 0
-    for name in names[offset - 1:offset - 1 + limit]:
+    for name in names[offset - 1 : offset - 1 + limit]:
         if character_count + len(name) > max_chars:
             if not entries:
                 raise RuntimeError("entry name exceeds max_chars; increase max_chars")
@@ -286,11 +301,14 @@ def list_files(path, offset=1, limit=DEFAULT_LIST_ENTRIES, max_chars=DEFAULT_TOO
         entries.append(name)
         character_count += len(name)
     truncated = offset - 1 + len(entries) < len(names)
-    return json.dumps({
-        "entries": entries,
-        "truncated": truncated,
-        "next_offset": offset + len(entries) if truncated else None,
-    }, ensure_ascii=False)
+    return json.dumps(
+        {
+            "entries": entries,
+            "truncated": truncated,
+            "next_offset": offset + len(entries) if truncated else None,
+        },
+        ensure_ascii=False,
+    )
 
 
 def edit_file(path, old_text, new_text):
@@ -309,11 +327,14 @@ def edit_file(path, old_text, new_text):
         raise RuntimeError("old_text appears multiple times")
 
     file_path.write_text(content.replace(old_text, new_text, 1), encoding="utf-8")
-    return json.dumps({
-        "status": "updated",
-        "path": str(file_path.relative_to(WORKSPACE_ROOT.resolve())),
-        "replacements": 1,
-    }, ensure_ascii=False)
+    return json.dumps(
+        {
+            "status": "updated",
+            "path": str(file_path.relative_to(WORKSPACE_ROOT.resolve())),
+            "replacements": 1,
+        },
+        ensure_ascii=False,
+    )
 
 
 def create_file(path, content):
@@ -334,11 +355,14 @@ def create_file(path, content):
             file.write(encoded_content)
     except FileExistsError as error:
         raise RuntimeError(f"file already exists: {path}") from error
-    return json.dumps({
-        "status": "created",
-        "path": str(file_path.relative_to(WORKSPACE_ROOT.resolve())),
-        "chars_written": len(content),
-    }, ensure_ascii=False)
+    return json.dumps(
+        {
+            "status": "created",
+            "path": str(file_path.relative_to(WORKSPACE_ROOT.resolve())),
+            "chars_written": len(content),
+        },
+        ensure_ascii=False,
+    )
 
 
 def iter_search_files(directory_path):
@@ -351,7 +375,7 @@ def iter_search_files(directory_path):
                 resolved_path = resolve_workspace_path(str(file_path), "file")
                 if resolved_path.is_file():
                     yield file_path.relative_to(workspace_root), resolved_path
-            except (RuntimeError, OSError):
+            except RuntimeError, OSError:
                 continue
 
 
@@ -370,8 +394,8 @@ def iter_matching_lines(file, query, snippet_chars):
             text = chunk[:-1] if complete else chunk
             combined = tail + text
             matched = matched or query in combined
-            tail = combined[-(len(query) - 1):] if len(query) > 1 else ""
-            snippet = (snippet + text)[:snippet_chars + 1]
+            tail = combined[-(len(query) - 1) :] if len(query) > 1 else ""
+            snippet = (snippet + text)[: snippet_chars + 1]
             if complete:
                 break
             chunk = file.readline(SEARCH_CHUNK_CHARS)
@@ -385,7 +409,7 @@ def iter_search_matches(directory_path, query, snippet_chars):
             with open(file_path, encoding="utf-8") as file:
                 for line_number, text, clipped in iter_matching_lines(file, query, snippet_chars):
                     yield str(relative_path), line_number, text, clipped
-        except (UnicodeDecodeError, OSError):
+        except UnicodeDecodeError, OSError:
             continue
 
 
@@ -413,20 +437,25 @@ def search_files(query, path, limit=MAX_SEARCH_RESULTS, max_chars=DEFAULT_TOOL_C
         if len(results) >= limit or character_count >= max_chars:
             truncated = True
             break
-        snippet = text[:max_chars - character_count]
-        results.append({
-            "path": relative_path,
-            "line": line_number,
-            "text": snippet,
-            "text_truncated": clipped or len(snippet) < len(text),
-        })
+        snippet = text[: max_chars - character_count]
+        results.append(
+            {
+                "path": relative_path,
+                "line": line_number,
+                "text": snippet,
+                "text_truncated": clipped or len(snippet) < len(text),
+            }
+        )
         character_count += len(snippet)
 
-    return json.dumps({
-        "results": results,
-        "truncated": truncated,
-        "next_offset": offset + len(results) if truncated else None,
-    }, ensure_ascii=False)
+    return json.dumps(
+        {
+            "results": results,
+            "truncated": truncated,
+            "next_offset": offset + len(results) if truncated else None,
+        },
+        ensure_ascii=False,
+    )
 
 
 TOOL_FUNCTIONS = {
@@ -444,7 +473,9 @@ def parse_args():
     )
     parser.add_argument("-p", "--prompt", required=True, help="Prompt to send to the agent.")
     parser.add_argument("--verbose", action="store_true", help="Print tool activity to stderr.")
-    parser.add_argument("--quiet", action="store_true", help="Reserve minimal output mode for scripts.")
+    parser.add_argument(
+        "--quiet", action="store_true", help="Reserve minimal output mode for scripts."
+    )
     parser.add_argument(
         "--max-tool-rounds",
         type=int,
@@ -520,9 +551,7 @@ def format_tool_call(tool_call):
     except json.JSONDecodeError:
         return f"Using {tool_call.function.name} with invalid JSON arguments"
 
-    formatted_arguments = " ".join(
-        f"{name}={value}" for name, value in sorted(arguments.items())
-    )
+    formatted_arguments = " ".join(f"{name}={value}" for name, value in sorted(arguments.items()))
     if not formatted_arguments:
         return f"Using {tool_call.function.name}"
 

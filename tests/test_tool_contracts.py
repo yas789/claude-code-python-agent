@@ -25,9 +25,7 @@ class FutureToolTests(unittest.TestCase):
             tool for tool in main.TOOLS if tool["function"]["name"] == "edit_file"
         )
 
-        self.assertFalse(
-            edit_file_tool["function"]["parameters"]["additionalProperties"]
-        )
+        self.assertFalse(edit_file_tool["function"]["parameters"]["additionalProperties"])
 
 
 if __name__ == "__main__":

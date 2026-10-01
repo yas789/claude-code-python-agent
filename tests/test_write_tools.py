@@ -4,8 +4,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from tests import helpers
 from app import main
+from tests import helpers
 
 
 class WriteToolTests(unittest.TestCase):
@@ -21,9 +21,17 @@ class WriteToolTests(unittest.TestCase):
 
     def test_edit_rejects_invalid_arguments_without_changing_file(self):
         cases = [
-            ("path", None), ("path", False), ("path", ""), ("path", "bad\0path"),
-            ("old_text", None), ("old_text", False), ("old_text", 1), ("old_text", ""),
-            ("new_text", None), ("new_text", True), ("new_text", []),
+            ("path", None),
+            ("path", False),
+            ("path", ""),
+            ("path", "bad\0path"),
+            ("old_text", None),
+            ("old_text", False),
+            ("old_text", 1),
+            ("old_text", ""),
+            ("new_text", None),
+            ("new_text", True),
+            ("new_text", []),
         ]
         for name, value in cases:
             with self.subTest(argument=name, value=value):
@@ -40,24 +48,39 @@ class WriteToolTests(unittest.TestCase):
         self.assertEqual(self.file.read_text(), "")
 
     def test_agent_receives_edit_validation_error_without_mutation(self):
-        client = helpers.FakeClient([
-            helpers.assistant_message(None, [helpers.tool_call(
-                "invalid", "edit_file",
-                '{"path": "example.txt", "old_text": "", "new_text": "new"}',
-            )]),
-            helpers.assistant_message("Choose a precise replacement target."),
-        ])
+        client = helpers.FakeClient(
+            [
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "invalid",
+                            "edit_file",
+                            '{"path": "example.txt", "old_text": "", "new_text": "new"}',
+                        )
+                    ],
+                ),
+                helpers.assistant_message("Choose a precise replacement target."),
+            ]
+        )
         main.run_agent(client, "Edit the file")
-        self.assertEqual(client.completions.calls[1]["messages"][2]["content"],
-                         "error: old_text must not be empty")
+        self.assertEqual(
+            client.completions.calls[1]["messages"][2]["content"],
+            "error: old_text must not be empty",
+        )
         self.assertEqual(self.file.read_text(), "hello world")
 
     def test_edit_receipt_is_compact_and_does_not_echo_content(self):
         replacement = "private text " * 10000
         result = main.edit_file("./example.txt", "world", replacement)
-        self.assertEqual(json.loads(result), {
-            "status": "updated", "path": "example.txt", "replacements": 1,
-        })
+        self.assertEqual(
+            json.loads(result),
+            {
+                "status": "updated",
+                "path": "example.txt",
+                "replacements": 1,
+            },
+        )
         self.assertLess(len(result), 200)
         self.assertNotIn("private text", result)
         self.assertEqual(self.file.read_text(), "hello " + replacement)
@@ -70,17 +93,31 @@ class WriteToolTests(unittest.TestCase):
         self.assertEqual(self.file.read_text(encoding="utf-8"), "🙂終 ")
 
     def test_agent_recovers_from_invalid_edit_and_receives_receipt(self):
-        client = helpers.FakeClient([
-            helpers.assistant_message(None, [helpers.tool_call(
-                "invalid", "edit_file",
-                '{"path": "example.txt", "old_text": "", "new_text": "agent"}',
-            )]),
-            helpers.assistant_message(None, [helpers.tool_call(
-                "valid", "edit_file",
-                '{"path": "example.txt", "old_text": "world", "new_text": "agent"}',
-            )]),
-            helpers.assistant_message("Updated example.txt."),
-        ])
+        client = helpers.FakeClient(
+            [
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "invalid",
+                            "edit_file",
+                            '{"path": "example.txt", "old_text": "", "new_text": "agent"}',
+                        )
+                    ],
+                ),
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "valid",
+                            "edit_file",
+                            '{"path": "example.txt", "old_text": "world", "new_text": "agent"}',
+                        )
+                    ],
+                ),
+                helpers.assistant_message("Updated example.txt."),
+            ]
+        )
         self.assertEqual(main.run_agent(client, "Update the file"), "Updated example.txt.")
         receipt = json.loads(client.completions.calls[2]["messages"][4]["content"])
         self.assertEqual(receipt["status"], "updated")
@@ -89,8 +126,14 @@ class WriteToolTests(unittest.TestCase):
 
     def test_create_rejects_invalid_arguments_before_creating_file(self):
         cases = [
-            ("path", None), ("path", False), ("path", ""), ("path", "bad\0path"),
-            ("content", None), ("content", True), ("content", []), ("content", 1),
+            ("path", None),
+            ("path", False),
+            ("path", ""),
+            ("path", "bad\0path"),
+            ("content", None),
+            ("content", True),
+            ("content", []),
+            ("content", 1),
         ]
         for name, value in cases:
             with self.subTest(argument=name, value=value):
@@ -108,9 +151,14 @@ class WriteToolTests(unittest.TestCase):
     def test_create_writes_full_content_and_returns_compact_receipt(self):
         content = "🙂 private text\r\n" * 10000
         result = main.create_file("./new.txt", content)
-        self.assertEqual(json.loads(result), {
-            "status": "created", "path": "new.txt", "chars_written": len(content),
-        })
+        self.assertEqual(
+            json.loads(result),
+            {
+                "status": "created",
+                "path": "new.txt",
+                "chars_written": len(content),
+            },
+        )
         self.assertLess(len(result), 200)
         self.assertNotIn("private text", result)
         self.assertEqual((self.root / "new.txt").read_bytes(), content.encode("utf-8"))
@@ -133,18 +181,35 @@ class WriteToolTests(unittest.TestCase):
         self.assertEqual((self.root / "new.txt").read_text(), "concurrent content")
 
     def test_agent_recovers_from_invalid_creation_and_receives_receipt(self):
-        client = helpers.FakeClient([
-            helpers.assistant_message(None, [helpers.tool_call(
-                "invalid", "create_file", '{"path": "new.txt", "content": true}',
-            )]),
-            helpers.assistant_message(None, [helpers.tool_call(
-                "valid", "create_file", '{"path": "new.txt", "content": "hello"}',
-            )]),
-            helpers.assistant_message("Created new.txt."),
-        ])
+        client = helpers.FakeClient(
+            [
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "invalid",
+                            "create_file",
+                            '{"path": "new.txt", "content": true}',
+                        )
+                    ],
+                ),
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "valid",
+                            "create_file",
+                            '{"path": "new.txt", "content": "hello"}',
+                        )
+                    ],
+                ),
+                helpers.assistant_message("Created new.txt."),
+            ]
+        )
         self.assertEqual(main.run_agent(client, "Create a file"), "Created new.txt.")
-        self.assertEqual(client.completions.calls[1]["messages"][2]["content"],
-                         "error: content must be a string")
+        self.assertEqual(
+            client.completions.calls[1]["messages"][2]["content"], "error: content must be a string"
+        )
         result = json.loads(client.completions.calls[2]["messages"][4]["content"])
         self.assertEqual(result, {"status": "created", "path": "new.txt", "chars_written": 5})
         self.assertEqual((self.root / "new.txt").read_text(), "hello")

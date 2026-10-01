@@ -1,12 +1,12 @@
 import json
 import tempfile
 import unittest
-from pathlib import Path
 from io import StringIO
+from pathlib import Path
 from unittest.mock import patch
 
-from tests import helpers
 from app import main
+from tests import helpers
 
 
 class SearchReader(StringIO):
@@ -109,15 +109,31 @@ class WorkspaceToolTests(unittest.TestCase):
 
     def test_agent_receives_and_continues_listing_pages(self):
         self.make_entries()
-        client = helpers.FakeClient([
-            helpers.assistant_message(None, [helpers.tool_call(
-                "first", "list_files", '{"path": ".", "limit": 2}',
-            )]),
-            helpers.assistant_message(None, [helpers.tool_call(
-                "second", "list_files", '{"path": ".", "offset": 3, "limit": 2}',
-            )]),
-            helpers.assistant_message("Found alpha, beta, and gamma."),
-        ])
+        client = helpers.FakeClient(
+            [
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "first",
+                            "list_files",
+                            '{"path": ".", "limit": 2}',
+                        )
+                    ],
+                ),
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "second",
+                            "list_files",
+                            '{"path": ".", "offset": 3, "limit": 2}',
+                        )
+                    ],
+                ),
+                helpers.assistant_message("Found alpha, beta, and gamma."),
+            ]
+        )
         self.assertEqual(main.run_agent(client, "List entries"), "Found alpha, beta, and gamma.")
         first = json.loads(client.completions.calls[1]["messages"][2]["content"])
         second = json.loads(client.completions.calls[2]["messages"][4]["content"])
@@ -127,15 +143,26 @@ class WorkspaceToolTests(unittest.TestCase):
 
     def test_listing_budget_error_is_returned_to_agent(self):
         self.make_entries()
-        client = helpers.FakeClient([
-            helpers.assistant_message(None, [helpers.tool_call(
-                "small", "list_files", '{"path": ".", "max_chars": 1}',
-            )]),
-            helpers.assistant_message("Increase the name budget."),
-        ])
+        client = helpers.FakeClient(
+            [
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "small",
+                            "list_files",
+                            '{"path": ".", "max_chars": 1}',
+                        )
+                    ],
+                ),
+                helpers.assistant_message("Increase the name budget."),
+            ]
+        )
         main.run_agent(client, "List entries")
-        self.assertEqual(client.completions.calls[1]["messages"][2]["content"],
-                         "error: entry name exceeds max_chars; increase max_chars")
+        self.assertEqual(
+            client.completions.calls[1]["messages"][2]["content"],
+            "error: entry name exceeds max_chars; increase max_chars",
+        )
 
     def test_search_rejects_invalid_queries(self):
         for query in (None, False, 1, [], "", "a\nb", "a\rb", "x" * (main.MAX_SEARCH_QUERY + 1)):
@@ -152,7 +179,10 @@ class WorkspaceToolTests(unittest.TestCase):
                 with self.subTest(argument=name, value=value):
                     with self.assertRaisesRegex(RuntimeError, f"{name} must be a positive integer"):
                         main.search_files("target", ".", **{name: value})
-        for name, maximum in (("limit", main.SEARCH_RESULT_CEILING), ("max_chars", main.MAX_TOOL_CHARS)):
+        for name, maximum in (
+            ("limit", main.SEARCH_RESULT_CEILING),
+            ("max_chars", main.MAX_TOOL_CHARS),
+        ):
             with self.assertRaisesRegex(RuntimeError, f"{name} must not exceed"):
                 main.search_files("target", ".", **{name: maximum + 1})
 
@@ -160,9 +190,17 @@ class WorkspaceToolTests(unittest.TestCase):
         (self.root / "example.txt").write_text("target one\ntarget two\n")
         self.assertEqual(len(self.search(limit=1)["results"]), 1)
         result = self.search(max_chars=3)
-        self.assertEqual(result["results"], [{
-            "path": "example.txt", "line": 1, "text": "tar", "text_truncated": True,
-        }])
+        self.assertEqual(
+            result["results"],
+            [
+                {
+                    "path": "example.txt",
+                    "line": 1,
+                    "text": "tar",
+                    "text_truncated": True,
+                }
+            ],
+        )
         self.assertTrue(result["truncated"])
 
     def search(self, query="target", **arguments):
@@ -275,9 +313,14 @@ class WorkspaceToolTests(unittest.TestCase):
         self.assertFalse(exact["truncated"])
         self.assertIsNone(exact["next_offset"])
         self.assertFalse(exact["results"][0]["text_truncated"])
-        self.assertEqual(self.search(offset=10**12), {
-            "results": [], "truncated": False, "next_offset": None,
-        })
+        self.assertEqual(
+            self.search(offset=10**12),
+            {
+                "results": [],
+                "truncated": False,
+                "next_offset": None,
+            },
+        )
 
     def test_search_rejects_invalid_match_offsets(self):
         for value in (0, -1, True, False, None, "2", 2.5):
@@ -323,18 +366,41 @@ class WorkspaceToolTests(unittest.TestCase):
 
     def test_agent_continues_search_and_reads_a_clipped_match(self):
         (self.root / "example.txt").write_text("target one\ntarget two\n")
-        client = helpers.FakeClient([
-            helpers.assistant_message(None, [helpers.tool_call(
-                "first", "search_files", '{"query": "target", "path": ".", "max_chars": 3}',
-            )]),
-            helpers.assistant_message(None, [helpers.tool_call(
-                "second", "search_files", '{"query": "target", "path": ".", "offset": 2}',
-            )]),
-            helpers.assistant_message(None, [helpers.tool_call(
-                "detail", "read_file", '{"path": "example.txt", "offset": 1, "limit": 1}',
-            )]),
-            helpers.assistant_message("Found both target lines."),
-        ])
+        client = helpers.FakeClient(
+            [
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "first",
+                            "search_files",
+                            '{"query": "target", "path": ".", "max_chars": 3}',
+                        )
+                    ],
+                ),
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "second",
+                            "search_files",
+                            '{"query": "target", "path": ".", "offset": 2}',
+                        )
+                    ],
+                ),
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "detail",
+                            "read_file",
+                            '{"path": "example.txt", "offset": 1, "limit": 1}',
+                        )
+                    ],
+                ),
+                helpers.assistant_message("Found both target lines."),
+            ]
+        )
         self.assertEqual(main.run_agent(client, "Find target"), "Found both target lines.")
         messages = client.completions.calls[3]["messages"]
         first, second, detail = [json.loads(messages[index]["content"]) for index in (2, 4, 6)]
@@ -346,17 +412,34 @@ class WorkspaceToolTests(unittest.TestCase):
 
     def test_agent_recovers_from_invalid_search_query(self):
         (self.root / "example.txt").write_text("target")
-        client = helpers.FakeClient([
-            helpers.assistant_message(None, [helpers.tool_call(
-                "invalid", "search_files", '{"query": "", "path": "."}',
-            )]),
-            helpers.assistant_message(None, [helpers.tool_call(
-                "valid", "search_files", '{"query": "target", "path": "."}',
-            )]),
-            helpers.assistant_message("Found target."),
-        ])
+        client = helpers.FakeClient(
+            [
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "invalid",
+                            "search_files",
+                            '{"query": "", "path": "."}',
+                        )
+                    ],
+                ),
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "valid",
+                            "search_files",
+                            '{"query": "target", "path": "."}',
+                        )
+                    ],
+                ),
+                helpers.assistant_message("Found target."),
+            ]
+        )
         self.assertEqual(main.run_agent(client, "Find target"), "Found target.")
-        self.assertEqual(client.completions.calls[1]["messages"][2]["content"],
-                         "error: query must not be empty")
+        self.assertEqual(
+            client.completions.calls[1]["messages"][2]["content"], "error: query must not be empty"
+        )
         result = json.loads(client.completions.calls[2]["messages"][4]["content"])
         self.assertEqual(result["results"][0]["path"], "example.txt")

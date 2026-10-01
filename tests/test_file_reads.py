@@ -1,12 +1,12 @@
 import json
 import tempfile
 import unittest
-from pathlib import Path
 from io import StringIO
+from pathlib import Path
 from unittest.mock import patch
 
-from tests import helpers
 from app import main
+from tests import helpers
 
 
 class StreamingReader(StringIO):
@@ -53,16 +53,28 @@ class FileReadTests(unittest.TestCase):
         self.assertEqual(self.read(offset=2)["content"], "beta\ngamma\n")
 
     def test_offset_past_eof_returns_empty_content(self):
-        self.assertEqual(self.read(offset=5), {
-            "content": "", "start_line": 5, "end_line": None,
-            "truncated": False, "next_offset": None,
-        })
+        self.assertEqual(
+            self.read(offset=5),
+            {
+                "content": "",
+                "start_line": 5,
+                "end_line": None,
+                "truncated": False,
+                "next_offset": None,
+            },
+        )
 
     def test_limit_selects_a_section(self):
-        self.assertEqual(self.read(offset=2, limit=1), {
-            "content": "beta\n", "start_line": 2, "end_line": 2,
-            "truncated": True, "next_offset": 3,
-        })
+        self.assertEqual(
+            self.read(offset=2, limit=1),
+            {
+                "content": "beta\n",
+                "start_line": 2,
+                "end_line": 2,
+                "truncated": True,
+                "next_offset": 3,
+            },
+        )
 
     def test_limit_can_extend_past_eof(self):
         self.assertEqual(self.read(offset=3, limit=10)["content"], "gamma\n")
@@ -170,10 +182,16 @@ class FileReadTests(unittest.TestCase):
 
     def test_empty_file_has_no_range_or_continuation(self):
         self.file.write_text("")
-        self.assertEqual(self.read(), {
-            "content": "", "start_line": 1, "end_line": None,
-            "truncated": False, "next_offset": None,
-        })
+        self.assertEqual(
+            self.read(),
+            {
+                "content": "",
+                "start_line": 1,
+                "end_line": None,
+                "truncated": False,
+                "next_offset": None,
+            },
+        )
 
     def test_unicode_budget_counts_characters_not_bytes(self):
         self.file.write_text("é🙂\n終\n", encoding="utf-8")
@@ -215,16 +233,31 @@ class FileReadTests(unittest.TestCase):
             main.read_file("missing.txt", offset=2)
 
     def test_agent_receives_range_metadata_and_can_continue(self):
-        client = helpers.FakeClient([
-            helpers.assistant_message(None, [helpers.tool_call(
-                "first", "read_file",
-                '{"path": "example.txt", "offset": 2, "limit": 1, "max_chars": 10}',
-            )]),
-            helpers.assistant_message(None, [helpers.tool_call(
-                "second", "read_file", '{"path": "example.txt", "offset": 3, "limit": 1}',
-            )]),
-            helpers.assistant_message("Read beta and gamma."),
-        ])
+        client = helpers.FakeClient(
+            [
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "first",
+                            "read_file",
+                            '{"path": "example.txt", "offset": 2, "limit": 1, "max_chars": 10}',
+                        )
+                    ],
+                ),
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "second",
+                            "read_file",
+                            '{"path": "example.txt", "offset": 3, "limit": 1}',
+                        )
+                    ],
+                ),
+                helpers.assistant_message("Read beta and gamma."),
+            ]
+        )
         self.assertEqual(main.run_agent(client, "Read from line 2"), "Read beta and gamma.")
         first = json.loads(client.completions.calls[1]["messages"][2]["content"])
         second = json.loads(client.completions.calls[2]["messages"][4]["content"])
@@ -234,15 +267,31 @@ class FileReadTests(unittest.TestCase):
         self.assertIsNone(second["next_offset"])
 
     def test_agent_can_recover_from_an_oversized_line(self):
-        client = helpers.FakeClient([
-            helpers.assistant_message(None, [helpers.tool_call(
-                "small", "read_file", '{"path": "example.txt", "max_chars": 5}',
-            )]),
-            helpers.assistant_message(None, [helpers.tool_call(
-                "larger", "read_file", '{"path": "example.txt", "max_chars": 17}',
-            )]),
-            helpers.assistant_message("Read all three lines."),
-        ])
+        client = helpers.FakeClient(
+            [
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "small",
+                            "read_file",
+                            '{"path": "example.txt", "max_chars": 5}',
+                        )
+                    ],
+                ),
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "larger",
+                            "read_file",
+                            '{"path": "example.txt", "max_chars": 17}',
+                        )
+                    ],
+                ),
+                helpers.assistant_message("Read all three lines."),
+            ]
+        )
         self.assertEqual(main.run_agent(client, "Read the file"), "Read all three lines.")
         error = client.completions.calls[1]["messages"][2]
         self.assertEqual(error["tool_call_id"], "small")
@@ -252,12 +301,21 @@ class FileReadTests(unittest.TestCase):
         self.assertFalse(result["truncated"])
 
     def test_invalid_range_arguments_are_returned_as_tool_errors(self):
-        client = helpers.FakeClient([
-            helpers.assistant_message(None, [helpers.tool_call(
-                "invalid", "read_file", '{"path": "example.txt", "offset": true}',
-            )]),
-            helpers.assistant_message("The offset must be an integer."),
-        ])
+        client = helpers.FakeClient(
+            [
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "invalid",
+                            "read_file",
+                            '{"path": "example.txt", "offset": true}',
+                        )
+                    ],
+                ),
+                helpers.assistant_message("The offset must be an integer."),
+            ]
+        )
         main.run_agent(client, "Read a range")
         result = client.completions.calls[1]["messages"][2]
         self.assertEqual(result["content"], "error: offset must be a positive integer")

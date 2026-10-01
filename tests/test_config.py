@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app import main
-
 from tests.helpers import fixture_text
 
 

@@ -5,6 +5,7 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
+from app import main
 from tests.helpers import (
     FakeClient,
     assistant_message,
@@ -12,8 +13,6 @@ from tests.helpers import (
     fixture_text,
     tool_call,
 )
-
-from app import main
 
 
 class AgentLoopTests(unittest.TestCase):
@@ -112,9 +111,14 @@ class AgentLoopTests(unittest.TestCase):
         second_call_messages = client.completions.calls[1]["messages"]
         self.assertEqual(second_call_messages[2]["role"], "tool")
         self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
-        self.assertEqual(json.loads(second_call_messages[2]["content"]), {
-            "status": "updated", "path": "example.txt", "replacements": 1,
-        })
+        self.assertEqual(
+            json.loads(second_call_messages[2]["content"]),
+            {
+                "status": "updated",
+                "path": "example.txt",
+                "replacements": 1,
+            },
+        )
 
     def test_run_agent_returns_tool_errors_to_model(self):
         final_answer = fixture_text("tool_error_answer.txt")
@@ -215,9 +219,14 @@ class AgentLoopTests(unittest.TestCase):
         second_call_messages = client.completions.calls[1]["messages"]
         self.assertEqual(second_call_messages[2]["role"], "tool")
         self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
-        self.assertEqual(json.loads(second_call_messages[2]["content"]), {
-            "status": "created", "path": "notes.txt", "chars_written": 11,
-        })
+        self.assertEqual(
+            json.loads(second_call_messages[2]["content"]),
+            {
+                "status": "created",
+                "path": "notes.txt",
+                "chars_written": 11,
+            },
+        )
 
     def test_run_agent_can_process_search_files_tool_call(self):
         final_answer = fixture_text("search_files_answer.txt")

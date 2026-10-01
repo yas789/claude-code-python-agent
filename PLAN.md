@@ -10,8 +10,8 @@ Every step requires focused tests, formatting/lint checks when available, and
 `git diff --check`. Update the result before proceeding; do not skip failures.
 
 - [x] 1. Record standards and this plan. Verify the baseline suite.
-- [~] 2. Configure Ruff and normalize formatting/imports. Verify lint and tests.
-- [ ] 3. Use installed dependencies and remove global SDK stubs. Verify independent imports.
+- [x] 2. Configure Ruff and normalize formatting/imports. Verify lint and tests.
+- [~] 3. Use installed dependencies and remove global SDK stubs. Verify independent imports.
 - [ ] 4. Isolate filesystem tests with shared temporary-workspace setup. Verify tests.
 - [ ] 5. Stabilize fake clients and add call-ID lookup. Verify helper regressions.
 - [ ] 6. Make contracts unconditional and assert CLI exit codes. Verify focused tests.
@@ -33,3 +33,4 @@ Every step requires focused tests, formatting/lint checks when available, and
 ## Verification record
 
 1. Baseline: 136 tests and diff checks passed. No blockers.
+2. Locked Ruff installed; formatting, lint, all 136 tests, and diff checks passed.
