@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -19,7 +20,7 @@ class ToolTests(unittest.TestCase):
             main.read_file(".")
 
     def test_list_files_lists_workspace_entries(self):
-        files = main.list_files(".")
+        files = json.loads(main.list_files("."))["entries"]
 
         self.assertIn("README.md", files)
         self.assertIn("app", files)
@@ -40,7 +41,9 @@ class ToolTests(unittest.TestCase):
             with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
                 result = main.edit_file("example.txt", "world", "agent")
 
-            self.assertEqual(result, "updated example.txt")
+            self.assertEqual(json.loads(result), {
+                "status": "updated", "path": "example.txt", "replacements": 1,
+            })
             self.assertEqual(file_path.read_text(), "hello agent")
 
     def test_edit_file_rejects_missing_old_text(self):
@@ -80,7 +83,9 @@ class ToolTests(unittest.TestCase):
             with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
                 result = main.create_file("created.txt", "hello agent")
 
-            self.assertEqual(result, "created created.txt")
+            self.assertEqual(json.loads(result), {
+                "status": "created", "path": "created.txt", "chars_written": 11,
+            })
             self.assertEqual(file_path.read_text(), "hello agent")
 
     def test_create_file_rejects_existing_file(self):
@@ -112,10 +117,12 @@ class ToolTests(unittest.TestCase):
             file_path.write_text("alpha\nbeta target\ngamma target")
 
             with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                result = main.search_files("target", ".")
+                result = json.loads(main.search_files("target", "."))["results"]
 
-            self.assertIn("example.txt:2: beta target", result)
-            self.assertIn("example.txt:3: gamma target", result)
+            self.assertEqual(result, [
+                {"path": "example.txt", "line": 2, "text": "beta target", "text_truncated": False},
+                {"path": "example.txt", "line": 3, "text": "gamma target", "text_truncated": False},
+            ])
 
     def test_search_files_returns_no_matches(self):
         with tempfile.TemporaryDirectory() as workspace:
@@ -123,7 +130,7 @@ class ToolTests(unittest.TestCase):
             file_path.write_text("alpha")
 
             with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                self.assertEqual(main.search_files("missing", "."), "no matches")
+                self.assertEqual(json.loads(main.search_files("missing", "."))["results"], [])
 
     def test_search_files_rejects_parent_directory_escape(self):
         with tempfile.TemporaryDirectory() as workspace:
@@ -147,7 +154,7 @@ class ToolTests(unittest.TestCase):
             (ignored_path / "ignored.txt").write_text("target")
 
             with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                self.assertEqual(main.search_files("target", "."), "no matches")
+                self.assertEqual(json.loads(main.search_files("target", "."))["results"], [])
 
     def test_search_files_limits_results(self):
         with tempfile.TemporaryDirectory() as workspace:
@@ -158,7 +165,7 @@ class ToolTests(unittest.TestCase):
             with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
                 result = main.search_files("target", ".")
 
-            self.assertEqual(len(result.splitlines()), main.MAX_SEARCH_RESULTS)
+            self.assertEqual(len(json.loads(result)["results"]), main.MAX_SEARCH_RESULTS)
 
 
 if __name__ == "__main__":

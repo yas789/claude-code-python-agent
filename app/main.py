@@ -16,6 +16,13 @@ DEFAULT_READ_LINES = 200
 MAX_READ_LINES = 2000
 DEFAULT_READ_CHARS = 16000
 MAX_READ_CHARS = 65536
+DEFAULT_LIST_ENTRIES = 100
+MAX_LIST_ENTRIES = 2000
+DEFAULT_TOOL_CHARS = 16000
+MAX_TOOL_CHARS = 65536
+SEARCH_RESULT_CEILING = 200
+MAX_SEARCH_QUERY = 4096
+SEARCH_CHUNK_CHARS = 4096
 
 TOOLS = [
     {
@@ -59,13 +66,27 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "list_files",
-            "description": "List files and directories in the local workspace.",
+            "description": "List sorted entry names in the local workspace. Returns JSON with entries, truncated, and next_offset; continue with next_offset on an unchanged directory.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
                         "description": "The relative directory path to list.",
+                    },
+                    "offset": {
+                        "type": "integer", "minimum": 1, "default": 1,
+                        "description": "The 1-based starting entry.",
+                    },
+                    "limit": {
+                        "type": "integer", "minimum": 1,
+                        "maximum": MAX_LIST_ENTRIES, "default": DEFAULT_LIST_ENTRIES,
+                        "description": "Maximum entries to return (default: 100; maximum: 2000).",
+                    },
+                    "max_chars": {
+                        "type": "integer", "minimum": 1,
+                        "maximum": MAX_TOOL_CHARS, "default": DEFAULT_TOOL_CHARS,
+                        "description": "Entry-name character budget, excluding JSON overhead (default: 16000; maximum: 65536).",
                     },
                 },
                 "required": ["path"],
@@ -77,7 +98,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "edit_file",
-            "description": "Replace exact text in a file in the local workspace.",
+            "description": "Replace one nonempty exact text match in a UTF-8 file in the local workspace. Returns a JSON receipt with status, resolved workspace-relative path, and replacements. An empty new_text deletes the match.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -87,7 +108,8 @@ TOOLS = [
                     },
                     "old_text": {
                         "type": "string",
-                        "description": "The exact existing text to replace.",
+                        "minLength": 1,
+                        "description": "The nonempty exact existing text to replace; must occur once.",
                     },
                     "new_text": {
                         "type": "string",
@@ -103,7 +125,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "create_file",
-            "description": "Create a new file in the local workspace without overwriting existing files.",
+            "description": "Create a new UTF-8 file in the local workspace without overwriting existing files. Empty content is allowed. Returns a JSON receipt with status, resolved workspace-relative path, and chars_written; content is written in full.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -125,17 +147,34 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "search_files",
-            "description": "Search text files in the local workspace for a query string.",
+            "description": "Search UTF-8 files in the local workspace for a case-sensitive substring. Returns JSON results with path, line, text, and text_truncated, plus truncated and next_offset. Continue with next_offset and the same query/path on an unchanged tree. Clipped text is a line prefix and may omit the query; use read_file at that line for more detail.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "The text to search for.",
+                        "minLength": 1,
+                        "maxLength": MAX_SEARCH_QUERY,
+                        "pattern": "^[^\r\n]+$",
+                        "description": "Nonempty, case-sensitive substring without CR/LF (maximum: 4096 characters).",
                     },
                     "path": {
                         "type": "string",
                         "description": "The relative directory path to search.",
+                    },
+                    "offset": {
+                        "type": "integer", "minimum": 1, "default": 1,
+                        "description": "The 1-based matching-line offset, not a file line number. Continuation rescans the unchanged tree.",
+                    },
+                    "limit": {
+                        "type": "integer", "minimum": 1,
+                        "maximum": SEARCH_RESULT_CEILING, "default": MAX_SEARCH_RESULTS,
+                        "description": "Maximum matching lines (default: 20; maximum: 200).",
+                    },
+                    "max_chars": {
+                        "type": "integer", "minimum": 1,
+                        "maximum": MAX_TOOL_CHARS, "default": DEFAULT_TOOL_CHARS,
+                        "description": "Total snippet-character budget excluding metadata and JSON overhead (default: 16000; maximum: 65536).",
                     },
                 },
                 "required": ["query", "path"],
@@ -207,71 +246,187 @@ def read_file(path, offset=1, limit=DEFAULT_READ_LINES, max_chars=DEFAULT_READ_C
     }, ensure_ascii=False)
 
 
-def list_files(path):
+def validate_positive_integer(name, value, maximum=None):
+    if type(value) is not int or value < 1:
+        raise RuntimeError(f"{name} must be a positive integer")
+    if maximum is not None and value > maximum:
+        raise RuntimeError(f"{name} must not exceed {maximum}")
+
+
+def validate_text(name, value, allow_empty=False):
+    if not isinstance(value, str):
+        raise RuntimeError(f"{name} must be a string")
+    if not allow_empty and not value:
+        raise RuntimeError(f"{name} must not be empty")
+
+
+def validate_path(path):
+    validate_text("path", path)
+    if "\0" in path:
+        raise RuntimeError("path must not contain null characters")
+
+
+def list_files(path, offset=1, limit=DEFAULT_LIST_ENTRIES, max_chars=DEFAULT_TOOL_CHARS):
+    validate_path(path)
+    validate_positive_integer("offset", offset)
+    validate_positive_integer("limit", limit, MAX_LIST_ENTRIES)
+    validate_positive_integer("max_chars", max_chars, MAX_TOOL_CHARS)
     directory_path = resolve_workspace_path(path, "directory")
     if not directory_path.is_dir():
         raise RuntimeError(f"path is not a directory: {path}")
 
-    return "\n".join(sorted(child.name for child in directory_path.iterdir()))
+    names = sorted(child.name for child in directory_path.iterdir())
+    entries = []
+    character_count = 0
+    for name in names[offset - 1:offset - 1 + limit]:
+        if character_count + len(name) > max_chars:
+            if not entries:
+                raise RuntimeError("entry name exceeds max_chars; increase max_chars")
+            break
+        entries.append(name)
+        character_count += len(name)
+    truncated = offset - 1 + len(entries) < len(names)
+    return json.dumps({
+        "entries": entries,
+        "truncated": truncated,
+        "next_offset": offset + len(entries) if truncated else None,
+    }, ensure_ascii=False)
 
 
 def edit_file(path, old_text, new_text):
+    validate_path(path)
+    validate_text("old_text", old_text)
+    validate_text("new_text", new_text, allow_empty=True)
     file_path = resolve_workspace_path(path, "file")
     if not file_path.is_file():
         raise RuntimeError(f"path is not a file: {path}")
 
-    content = file_path.read_text()
+    content = file_path.read_text(encoding="utf-8")
     occurrences = content.count(old_text)
     if occurrences == 0:
         raise RuntimeError("old_text not found")
     if occurrences > 1:
         raise RuntimeError("old_text appears multiple times")
 
-    file_path.write_text(content.replace(old_text, new_text, 1))
-    return f"updated {path}"
+    file_path.write_text(content.replace(old_text, new_text, 1), encoding="utf-8")
+    return json.dumps({
+        "status": "updated",
+        "path": str(file_path.relative_to(WORKSPACE_ROOT.resolve())),
+        "replacements": 1,
+    }, ensure_ascii=False)
 
 
 def create_file(path, content):
+    validate_path(path)
+    validate_text("content", content, allow_empty=True)
+    try:
+        encoded_content = content.encode("utf-8")
+    except UnicodeEncodeError as error:
+        raise RuntimeError("content must be valid UTF-8 text") from error
     file_path = resolve_workspace_path(path, "file")
     if file_path.exists():
         raise RuntimeError(f"file already exists: {path}")
     if not file_path.parent.is_dir():
         raise RuntimeError(f"parent directory does not exist: {path}")
 
-    file_path.write_text(content)
-    return f"created {path}"
+    try:
+        with open(file_path, "xb") as file:
+            file.write(encoded_content)
+    except FileExistsError as error:
+        raise RuntimeError(f"file already exists: {path}") from error
+    return json.dumps({
+        "status": "created",
+        "path": str(file_path.relative_to(WORKSPACE_ROOT.resolve())),
+        "chars_written": len(content),
+    }, ensure_ascii=False)
 
 
-def search_files(query, path):
+def iter_search_files(directory_path):
+    workspace_root = WORKSPACE_ROOT.resolve()
+    for directory, dirnames, filenames in os.walk(directory_path, followlinks=False):
+        dirnames[:] = sorted(name for name in dirnames if name not in IGNORED_SEARCH_DIRS)
+        for name in sorted(filenames):
+            file_path = Path(directory) / name
+            try:
+                resolved_path = resolve_workspace_path(str(file_path), "file")
+                if resolved_path.is_file():
+                    yield file_path.relative_to(workspace_root), resolved_path
+            except (RuntimeError, OSError):
+                continue
+
+
+def iter_matching_lines(file, query, snippet_chars):
+    line_number = 0
+    while True:
+        chunk = file.readline(SEARCH_CHUNK_CHARS)
+        if not chunk:
+            return
+        line_number += 1
+        snippet = ""
+        tail = ""
+        matched = False
+        while chunk:
+            complete = chunk.endswith("\n")
+            text = chunk[:-1] if complete else chunk
+            combined = tail + text
+            matched = matched or query in combined
+            tail = combined[-(len(query) - 1):] if len(query) > 1 else ""
+            snippet = (snippet + text)[:snippet_chars + 1]
+            if complete:
+                break
+            chunk = file.readline(SEARCH_CHUNK_CHARS)
+        if matched:
+            yield line_number, snippet[:snippet_chars], len(snippet) > snippet_chars
+
+
+def iter_search_matches(directory_path, query, snippet_chars):
+    for relative_path, file_path in iter_search_files(directory_path):
+        try:
+            with open(file_path, encoding="utf-8") as file:
+                for line_number, text, clipped in iter_matching_lines(file, query, snippet_chars):
+                    yield str(relative_path), line_number, text, clipped
+        except (UnicodeDecodeError, OSError):
+            continue
+
+
+def search_files(query, path, limit=MAX_SEARCH_RESULTS, max_chars=DEFAULT_TOOL_CHARS, offset=1):
+    validate_path(path)
+    validate_text("query", query)
+    if len(query) > MAX_SEARCH_QUERY:
+        raise RuntimeError(f"query must not exceed {MAX_SEARCH_QUERY} characters")
+    if "\n" in query or "\r" in query:
+        raise RuntimeError("query must not contain CR or LF")
+    validate_positive_integer("limit", limit, SEARCH_RESULT_CEILING)
+    validate_positive_integer("max_chars", max_chars, MAX_TOOL_CHARS)
+    validate_positive_integer("offset", offset)
     directory_path = resolve_workspace_path(path, "directory")
     if not directory_path.is_dir():
         raise RuntimeError(f"path is not a directory: {path}")
 
     results = []
-    for file_path in sorted(directory_path.rglob("*")):
-        if len(results) >= MAX_SEARCH_RESULTS:
+    character_count = 0
+    truncated = False
+    matches = iter_search_matches(directory_path, query, max_chars)
+    for match_number, (relative_path, line_number, text, clipped) in enumerate(matches, start=1):
+        if match_number < offset:
+            continue
+        if len(results) >= limit or character_count >= max_chars:
+            truncated = True
             break
-        if not file_path.is_file():
-            continue
-        if any(part in IGNORED_SEARCH_DIRS for part in file_path.relative_to(directory_path).parts):
-            continue
+        snippet = text[:max_chars - character_count]
+        results.append({
+            "path": relative_path,
+            "line": line_number,
+            "text": snippet,
+            "text_truncated": clipped or len(snippet) < len(text),
+        })
+        character_count += len(snippet)
 
-        try:
-            lines = file_path.read_text().splitlines()
-        except UnicodeDecodeError:
-            continue
-
-        for line_number, line in enumerate(lines, start=1):
-            if query in line:
-                relative_path = file_path.relative_to(WORKSPACE_ROOT.resolve())
-                results.append(f"{relative_path}:{line_number}: {line}")
-                if len(results) >= MAX_SEARCH_RESULTS:
-                    break
-
-    if not results:
-        return "no matches"
-
-    return "\n".join(results)
+    return json.dumps({
+        "results": results,
+        "truncated": truncated,
+        "next_offset": offset + len(results) if truncated else None,
+    }, ensure_ascii=False)
 
 
 TOOL_FUNCTIONS = {

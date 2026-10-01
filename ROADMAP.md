@@ -19,20 +19,25 @@ The agent processes one prompt and executes tool calls sequentially until the
 model returns an answer or the request limit is reached.
 
 Available tools are `read_file`, `list_files`, `edit_file`, `create_file`, and
-`search_files`. File reads support bounded line ranges and return JSON text with
-explicit continuation metadata. Tests use a fake model client and temporary workspaces to check
+`search_files`. File reads support bounded line ranges; listing and search
+support bounded pages with explicit continuation metadata. Search streams
+matching text and checks discovered paths against the workspace. Write tools
+validate argument types and return compact receipts. All successful tool results
+are JSON text. Tests use a fake model client and temporary workspaces to check
 tool behavior and agent control flow.
 
 ## Milestone 1: Reliable Foundations
 
-- [ ] Re-check resolved paths for each discovered search file so symlinks cannot
+- [x] Re-check resolved paths for each discovered search file so symlinks cannot
       bypass workspace containment.
 - [ ] Validate tool argument shapes and types, returning actionable errors for
       malformed calls.
 - [x] Add bounded line-range file reads with explicit truncation and continuation
       metadata. See [README.md](README.md#bounded-file-reads) for the contract and
-      [PLAN.md](PLAN.md) for the verified implementation steps.
-- [ ] Bound output from the remaining tools with explicit truncation metadata.
+      [FILE_READ_PLAN.md](FILE_READ_PLAN.md) for the verified implementation steps.
+- [x] Bound successful listing/search output with explicit truncation metadata
+      and return compact write receipts. See [PLAN.md](PLAN.md) for the verified
+      implementation steps.
 - [ ] Distinguish tool rounds from model requests and allow a final summary when
       the tool budget is exhausted.
 - [ ] Provide clear CLI errors for missing credentials, API failures, and
@@ -75,7 +80,7 @@ claims. Evaluate a single-agent implementation before adding orchestration.
 ## Milestone 4: Context and Cost Management
 
 - [ ] Prefer targeted line-range reads over whole-file reads.
-- [ ] Prune ignored directories before traversing them during search.
+- [x] Prune ignored directories before traversing them during search.
 - [ ] Track token usage and cost information when the provider supplies it.
 - [ ] Add configurable request and token budgets.
 - [ ] Compact older history while preserving the task, key decisions, changed

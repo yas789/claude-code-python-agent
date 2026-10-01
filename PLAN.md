@@ -1,87 +1,89 @@
-# Bounded File Reads: 15 Small Commits
+# Remaining Tools: 15 Small Commits
 
-## Goal
+## Goal and Baseline
 
-Let the agent read a specific file section with bounded output and explicit
-continuation metadata. Keep the existing single-prompt CLI and workspace checks.
+Apply bounded, structured output and precise validation to listing, search,
+editing, and creation in 15 verified commits from baseline `cf3e327`.
+The earlier completed file-read plan is preserved in [FILE_READ_PLAN.md](FILE_READ_PLAN.md).
+File reads already support bounded streaming. Listings are unbounded; search
+silently caps results and loads whole files. Write tools return plain text.
 
-## Baseline State
+## Contracts
 
-`read_file` currently reads a whole file into memory and accepts only `path`.
-The repository already has deterministic unittest coverage. The previously
-written README/roadmap documentation will be included in the planning commit.
-
-## Contract
-
-Use 1-based `offset`, a line `limit`, and a character budget `max_chars`.
-Defaults will be 200 lines and 16,000 characters; hard ceilings will be 2,000
-lines and 65,536 characters. Return JSON text containing content, range, and
-continuation metadata. Preserve complete lines: when a single selected line
-exceeds the character budget, return an actionable error instead of silently
-omitting part of it. Read incrementally, including when skipping long lines.
+- Listing: stable sorted entry names; 1-based entry offset; default 100 entries,
+  ceiling 2,000; default 16,000 name characters, ceiling 65,536.
+- Search: case-sensitive, single-line substring queries; default 20 results,
+  ceiling 200; default 16,000 snippet characters, ceiling 65,536. Stream files
+  and long lines in bounded chunks. Snippet clipping must be explicit. Use a
+  1-based matching-line offset to continue; rescanning assumes an unchanged tree.
+- Both return JSON text and explicit `truncated`/`next_offset` metadata. Content
+  budgets exclude metadata and JSON serialization overhead.
+- Writes: validate complete arguments before mutation; return compact JSON
+  receipts without echoing content. Preserve complete edits and creation content.
+- Keep tool schemas synchronized with each implemented capability.
 
 ## Checklist
 
-- [x] 1. Record the roadmap and implementation plan on a feature branch.
-  Verification: baseline unittest discovery and `git diff --check`.
-  Result: all 59 baseline tests and diff checks passed.
-- [x] 2. Add a 1-based starting-line offset.
-  Verification: focused offset tests.
-  Result: 3 focused tests and diff checks passed.
-- [x] 3. Add an optional line limit.
-  Verification: focused range tests.
-  Result: all 5 range tests and diff checks passed.
-- [x] 4. Validate range argument types and values.
-  Verification: invalid offset/limit tests, including booleans.
-  Result: all 7 focused tests and diff checks passed.
-- [x] 5. Advertise optional range arguments to the model.
-  Verification: tool schema contract tests.
-  Result: all 14 focused/schema tests and diff checks passed.
-- [x] 6. Bound default and maximum line counts.
-  Verification: default truncation and hard-limit tests.
-  Result: all 16 focused/schema tests and diff checks passed.
-- [x] 7. Return structured range and continuation metadata.
-  Verification: exact-boundary, EOF, and continuation tests.
-  Result: all 71 tests and diff checks passed, including continuation without gaps.
-- [x] 8. Add a configurable character budget and preserve complete lines.
-  Verification: character-boundary and oversized-line tests.
-  Result: all 24 focused/schema tests and diff checks passed.
-- [x] 9. Stream selected lines instead of loading the whole file.
-  Verification: streaming and existing range tests.
-  Result: all 17 focused tests and diff checks passed; whole-file reads are rejected by the test reader.
-- [x] 10. Bound selected-line reads to protect against huge lines.
-  Verification: guarded-reader test for bounded `readline` calls.
-  Result: all 19 focused tests and diff checks passed; selected reads use at most the remaining budget plus one character.
-- [x] 11. Skip earlier oversized lines in bounded chunks.
-  Verification: late-offset reads after an oversized line.
-  Result: all 21 focused tests and diff checks passed, including a huge offset stopping at EOF.
-- [x] 12. Cover text and workspace boundary cases.
-  Verification: empty files, Unicode, newline variants, and symlink containment.
-  Result: all 89 tests and diff checks passed; reads now use explicit UTF-8 decoding.
-- [x] 13. Verify ranged reads and error recovery through the agent loop.
-  Verification: fake-client multi-round integration tests.
-  Result: all 47 focused/agent tests and diff checks passed; metadata, continuation, and actionable errors reach the model.
-- [x] 14. Document the tool contract and continuation examples.
-  Verification: documentation diff and schema tests.
-  Result: all 39 focused/schema tests and documentation diff checks passed.
-- [x] 15. Record final verification and roadmap progress.
-  Verification: full unittest discovery, syntax checks, diff checks, and commit count.
-  Result: all 92 tests passed; syntax checks and working-tree/branch diff checks
-  passed. Verified 14 preceding commits from baseline `57e3949`; this final
-  documentation commit completes the 15-commit sequence.
+- [x] 1. Record plan and baseline on a feature branch.
+  Verification: full unittest discovery and diff checks.
+  Result: all 92 baseline tests and diff checks passed.
+- [x] 2. Validate listing arguments.
+  Verification: invalid types, booleans, offsets, and budgets.
+  Result: 2 focused tests passed with invalid-input subcases; diff checks passed.
+- [x] 3. Paginate directory listings.
+  Verification: ordering, line/name budgets, and exact boundaries.
+  Result: all 5 focused tests and diff checks passed.
+- [x] 4. Add structured listing metadata and schemas.
+  Verification: continuation reconstruction and schema contracts.
+  Result: all 99 tests and diff checks passed.
+- [x] 5. Verify listings through the agent loop.
+  Verification: empty directories, EOF, and multi-page fake-client tests.
+  Result: all 27 focused/agent tests and diff checks passed.
+- [x] 6. Validate search arguments and configurable budgets.
+  Verification: malformed queries, types, and budget boundaries.
+  Result: all 14 focused tests and diff checks passed.
+- [x] 7. Fix search containment and prune ignored directories.
+  Verification: symlink escapes, internal links, and traversal checks.
+  Result: all 17 focused tests and diff checks passed after canonicalizing expected paths.
+- [x] 8. Stream searched files and oversized lines.
+  Verification: bounded-reader tests and chunk-boundary matching.
+  Result: all 21 focused tests and diff checks passed, including matches across chunks and no matches across lines.
+- [x] 9. Add structured search results and explicit snippet clipping.
+  Verification: result fields, character budgets, and schema contracts.
+  Result: all 115 tests and diff checks passed; snippet and page truncation have separate flags.
+- [x] 10. Add search continuation.
+  Verification: match offsets, exact EOF, and reconstruction without gaps.
+  Result: all 27 focused tests and diff checks passed; stable matching-line identities survive pagination and snippet clipping.
+- [x] 11. Verify search boundaries and recovery.
+  Verification: Unicode, newline variants, unreadable files, and agent-loop tests.
+  Result: all 48 focused/agent tests and diff checks passed, including maximum-length queries crossing chunks.
+- [x] 12. Validate edit arguments before writing.
+  Verification: empty targets, incorrect types, and unchanged files on failure.
+  Result: all 26 focused/tool-contract tests and diff checks passed; validation failures preserve file contents.
+- [x] 13. Return structured edit receipts.
+  Verification: replacement counts, deletion, and agent integration.
+  Result: all 43 focused/tool/agent tests and diff checks passed; receipts do not echo replacement content.
+- [x] 14. Validate creation and return structured receipts.
+  Verification: full content, empty files, existing-file protection, and agent integration.
+  Result: all 49 focused/tool/agent tests and diff checks passed; full UTF-8 content is preserved and concurrent creation is not overwritten.
+- [x] 15. Document contracts and close the milestone.
+  Verification: complete test suite, syntax/diff checks, and exactly 15 commits.
+  Result: all 136 tests passed (92 at baseline); syntax and working-tree/branch
+  diff checks passed. Verified 14 preceding commits from `cf3e327`; this final
+  documentation commit completes the 15-commit batch.
 
 ## Delivered State
 
-`read_file(path, offset=1, limit=200, max_chars=16000)` now streams bounded UTF-8
-line ranges and returns JSON content with range and continuation metadata.
-Validation, character/line boundaries, bounded buffering, workspace containment,
-and agent-loop recovery are covered by deterministic tests. The README documents
-the return-format change and the roadmap marks this feature complete.
+Listing returns bounded sorted pages with continuation. Search streams matching
+lines in bounded chunks, enforces workspace containment, prunes ignored
+directories, and returns paginated JSON with explicit snippet clipping. Edits
+and creation validate argument types and return compact JSON receipts; creation
+uses exclusive writes. Successful results across all five tools are JSON text.
+The README documents defaults, ceilings, changed return formats, and pagination
+assumptions; the roadmap records completed output and traversal work.
 
 ## Blockers / Failed Checks
 
-The initial focused schema command imported `app.main` before the existing
-OpenAI test stub was installed, and failed because the dependency is absent in
-the system interpreter. Loading `tests.test_file_reads` (which imports the
-shared helpers) first resolved the test setup; the rerun passed. Full discovery
-also loads the existing helpers before these modules.
+Step 7's first traversal assertion compared macOS `/var` paths with resolved
+`/private/var` paths. Canonicalizing expected test paths fixed the assertion;
+the implementation correctly resolves workspace paths.
