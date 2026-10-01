@@ -1,7 +1,28 @@
+import tempfile
+import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
+
+from app import main
 
 FIXTURES = Path(__file__).parent / "fixtures"
+
+
+class WorkspaceTestCase(unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.workspace = tempfile.TemporaryDirectory()
+        self.addCleanup(self.workspace.cleanup)
+        self.root = Path(self.workspace.name).resolve()
+        workspace_patch = patch.object(main, "WORKSPACE_ROOT", self.root)
+        workspace_patch.start()
+        self.addCleanup(workspace_patch.stop)
+        # Temporary adapter until tools accept an explicit workspace.
+        self.tools = main
+
+    def run_agent(self, *args, **kwargs):
+        return main.run_agent(*args, **kwargs)
 
 
 class FakeCompletions:

@@ -1,6 +1,5 @@
 import json
 import tempfile
-import unittest
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
@@ -22,37 +21,32 @@ class SearchReader(StringIO):
         return super().readline(size)
 
 
-class WorkspaceToolTests(unittest.TestCase):
+class WorkspaceToolTests(helpers.WorkspaceTestCase):
     def setUp(self):
-        self.workspace = tempfile.TemporaryDirectory()
-        self.addCleanup(self.workspace.cleanup)
-        self.root = Path(self.workspace.name)
-        workspace_patch = patch.object(main, "WORKSPACE_ROOT", self.root)
-        workspace_patch.start()
-        self.addCleanup(workspace_patch.stop)
+        super().setUp()
 
     def test_listing_rejects_invalid_ranges_and_budgets(self):
         for name in ("offset", "limit", "max_chars"):
             for value in (0, -1, True, False, 1.5, "1", None):
                 with self.subTest(argument=name, value=value):
                     with self.assertRaisesRegex(RuntimeError, f"{name} must be a positive integer"):
-                        main.list_files(".", **{name: value})
+                        self.tools.list_files(".", **{name: value})
         for name, maximum in (("limit", main.MAX_LIST_ENTRIES), ("max_chars", main.MAX_TOOL_CHARS)):
             with self.assertRaisesRegex(RuntimeError, f"{name} must not exceed"):
-                main.list_files(".", **{name: maximum + 1})
+                self.tools.list_files(".", **{name: maximum + 1})
 
     def test_listing_rejects_invalid_paths(self):
         for path in (None, 1, False, [], "", "bad\0path"):
             with self.subTest(path=path):
                 with self.assertRaisesRegex(RuntimeError, "path must"):
-                    main.list_files(path)
+                    self.tools.list_files(path)
 
     def make_entries(self):
         for name in ("gamma", "alpha", "beta"):
             (self.root / name).touch()
 
     def listing(self, **arguments):
-        return json.loads(main.list_files(".", **arguments))
+        return json.loads(self.tools.list_files(".", **arguments))
 
     def test_listing_returns_sorted_selected_entries(self):
         self.make_entries()
@@ -65,7 +59,7 @@ class WorkspaceToolTests(unittest.TestCase):
         self.assertEqual(self.listing(max_chars=9)["entries"], ["alpha", "beta"])
         self.assertEqual(self.listing(max_chars=8)["entries"], ["alpha"])
         with self.assertRaisesRegex(RuntimeError, "entry name exceeds max_chars"):
-            main.list_files(".", max_chars=4)
+            self.tools.list_files(".", max_chars=4)
 
     def test_listing_default_entry_limit(self):
         for index in range(main.DEFAULT_LIST_ENTRIES + 1):
@@ -134,7 +128,7 @@ class WorkspaceToolTests(unittest.TestCase):
                 helpers.assistant_message("Found alpha, beta, and gamma."),
             ]
         )
-        self.assertEqual(main.run_agent(client, "List entries"), "Found alpha, beta, and gamma.")
+        self.assertEqual(self.run_agent(client, "List entries"), "Found alpha, beta, and gamma.")
         first = json.loads(client.completions.calls[1]["messages"][2]["content"])
         second = json.loads(client.completions.calls[2]["messages"][4]["content"])
         self.assertEqual(first["next_offset"], 3)
@@ -158,7 +152,7 @@ class WorkspaceToolTests(unittest.TestCase):
                 helpers.assistant_message("Increase the name budget."),
             ]
         )
-        main.run_agent(client, "List entries")
+        self.run_agent(client, "List entries")
         self.assertEqual(
             client.completions.calls[1]["messages"][2]["content"],
             "error: entry name exceeds max_chars; increase max_chars",
@@ -168,23 +162,23 @@ class WorkspaceToolTests(unittest.TestCase):
         for query in (None, False, 1, [], "", "a\nb", "a\rb", "x" * (main.MAX_SEARCH_QUERY + 1)):
             with self.subTest(query=repr(query)[:30]):
                 with self.assertRaisesRegex(RuntimeError, "query must"):
-                    main.search_files(query, ".")
+                    self.tools.search_files(query, ".")
 
     def test_search_rejects_invalid_paths_and_budgets(self):
         for path in (None, False, "", "bad\0path"):
             with self.assertRaisesRegex(RuntimeError, "path must"):
-                main.search_files("target", path)
+                self.tools.search_files("target", path)
         for name in ("limit", "max_chars"):
             for value in (0, -1, True, None, "1", 1.5):
                 with self.subTest(argument=name, value=value):
                     with self.assertRaisesRegex(RuntimeError, f"{name} must be a positive integer"):
-                        main.search_files("target", ".", **{name: value})
+                        self.tools.search_files("target", ".", **{name: value})
         for name, maximum in (
             ("limit", main.SEARCH_RESULT_CEILING),
             ("max_chars", main.MAX_TOOL_CHARS),
         ):
             with self.assertRaisesRegex(RuntimeError, f"{name} must not exceed"):
-                main.search_files("target", ".", **{name: maximum + 1})
+                self.tools.search_files("target", ".", **{name: maximum + 1})
 
     def test_search_uses_custom_result_and_character_budgets(self):
         (self.root / "example.txt").write_text("target one\ntarget two\n")
@@ -204,7 +198,7 @@ class WorkspaceToolTests(unittest.TestCase):
         self.assertTrue(result["truncated"])
 
     def search(self, query="target", **arguments):
-        return json.loads(main.search_files(query, ".", **arguments))
+        return json.loads(self.tools.search_files(query, ".", **arguments))
 
     def test_search_skips_files_and_directories_linked_outside_workspace(self):
         with tempfile.TemporaryDirectory() as outside:
@@ -238,7 +232,7 @@ class WorkspaceToolTests(unittest.TestCase):
                 yield entry
 
         with patch.object(main.os, "walk", side_effect=tracking_walk):
-            result = main.search_files("target", ".")
+            result = self.tools.search_files("target", ".")
         self.assertEqual(visited, [self.root.resolve(), directory.resolve()])
         self.assertEqual(json.loads(result)["results"][0]["path"], "visible/found.txt")
 
@@ -260,7 +254,7 @@ class WorkspaceToolTests(unittest.TestCase):
         (self.root / "example.txt").touch()
         reader = SearchReader("x" * 100000 + "target")
         with patch.object(main, "open", return_value=reader, create=True):
-            result = main.search_files("target", ".", max_chars=5)
+            result = self.tools.search_files("target", ".", max_chars=5)
         match = json.loads(result)["results"][0]
         self.assertEqual((match["path"], match["line"], match["text"]), ("example.txt", 1, "xxxxx"))
         self.assertTrue(match["text_truncated"])
@@ -401,7 +395,7 @@ class WorkspaceToolTests(unittest.TestCase):
                 helpers.assistant_message("Found both target lines."),
             ]
         )
-        self.assertEqual(main.run_agent(client, "Find target"), "Found both target lines.")
+        self.assertEqual(self.run_agent(client, "Find target"), "Found both target lines.")
         messages = client.completions.calls[3]["messages"]
         first, second, detail = [json.loads(messages[index]["content"]) for index in (2, 4, 6)]
         self.assertEqual(first["next_offset"], 2)
@@ -437,7 +431,7 @@ class WorkspaceToolTests(unittest.TestCase):
                 helpers.assistant_message("Found target."),
             ]
         )
-        self.assertEqual(main.run_agent(client, "Find target"), "Found target.")
+        self.assertEqual(self.run_agent(client, "Find target"), "Found target.")
         self.assertEqual(
             client.completions.calls[1]["messages"][2]["content"], "error: query must not be empty"
         )

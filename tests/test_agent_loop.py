@@ -1,13 +1,12 @@
 import json
-import tempfile
 import unittest
 from io import StringIO
-from pathlib import Path
 from unittest.mock import patch
 
 from app import main
 from tests.helpers import (
     FakeClient,
+    WorkspaceTestCase,
     assistant_message,
     final_message_without_tool_calls,
     fixture_text,
@@ -15,19 +14,24 @@ from tests.helpers import (
 )
 
 
-class AgentLoopTests(unittest.TestCase):
+class AgentLoopTests(WorkspaceTestCase):
+    def setUp(self):
+        super().setUp()
+        (self.root / "README.md").write_text("# Claude Code Python Agent\n")
+        (self.root / "app").mkdir()
+
     def test_run_agent_returns_final_answer_without_tool_calls(self):
         final_answer = fixture_text("final_answer.txt")
         client = FakeClient([assistant_message(final_answer)])
 
-        self.assertEqual(main.run_agent(client, "Say hello"), final_answer)
+        self.assertEqual(self.run_agent(client, "Say hello"), final_answer)
         self.assertEqual(len(client.completions.calls), 1)
 
     def test_run_agent_handles_final_answer_without_tool_calls_attribute(self):
         final_answer = fixture_text("final_answer.txt")
         client = FakeClient([final_message_without_tool_calls(final_answer)])
 
-        self.assertEqual(main.run_agent(client, "Say hello"), final_answer)
+        self.assertEqual(self.run_agent(client, "Say hello"), final_answer)
 
     def test_run_agent_reads_file_then_returns_generated_answer(self):
         final_answer = fixture_text("readme_summary.txt")
@@ -41,7 +45,7 @@ class AgentLoopTests(unittest.TestCase):
             ]
         )
 
-        self.assertEqual(main.run_agent(client, "Summarize the README"), final_answer)
+        self.assertEqual(self.run_agent(client, "Summarize the README"), final_answer)
 
         second_call_messages = client.completions.calls[1]["messages"]
         self.assertEqual(second_call_messages[1].tool_calls[0].id, "call_1")
@@ -65,7 +69,7 @@ class AgentLoopTests(unittest.TestCase):
             ]
         )
 
-        self.assertEqual(main.run_agent(client, "Inspect the workspace"), final_answer)
+        self.assertEqual(self.run_agent(client, "Inspect the workspace"), final_answer)
         self.assertEqual(len(client.completions.calls), 3)
 
         final_call_messages = client.completions.calls[2]["messages"]
@@ -84,29 +88,26 @@ class AgentLoopTests(unittest.TestCase):
     def test_run_agent_can_process_edit_file_tool_call(self):
         final_answer = fixture_text("edit_file_answer.txt")
 
-        with tempfile.TemporaryDirectory() as workspace:
-            file_path = Path(workspace) / "example.txt"
-            file_path.write_text("hello world")
-            client = FakeClient(
-                [
-                    assistant_message(
-                        None,
-                        [
-                            tool_call(
-                                "call_1",
-                                "edit_file",
-                                '{"path": "example.txt", "old_text": "world", "new_text": "agent"}',
-                            )
-                        ],
-                    ),
-                    assistant_message(final_answer),
-                ]
-            )
+        file_path = self.root / "example.txt"
+        file_path.write_text("hello world")
+        client = FakeClient(
+            [
+                assistant_message(
+                    None,
+                    [
+                        tool_call(
+                            "call_1",
+                            "edit_file",
+                            '{"path": "example.txt", "old_text": "world", "new_text": "agent"}',
+                        )
+                    ],
+                ),
+                assistant_message(final_answer),
+            ]
+        )
 
-            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                self.assertEqual(main.run_agent(client, "Update example.txt"), final_answer)
-
-            self.assertEqual(file_path.read_text(), "hello agent")
+        self.assertEqual(self.run_agent(client, "Update example.txt"), final_answer)
+        self.assertEqual(file_path.read_text(), "hello agent")
 
         second_call_messages = client.completions.calls[1]["messages"]
         self.assertEqual(second_call_messages[2]["role"], "tool")
@@ -123,29 +124,26 @@ class AgentLoopTests(unittest.TestCase):
     def test_run_agent_returns_tool_errors_to_model(self):
         final_answer = fixture_text("tool_error_answer.txt")
 
-        with tempfile.TemporaryDirectory() as workspace:
-            file_path = Path(workspace) / "example.txt"
-            file_path.write_text("hello world")
-            client = FakeClient(
-                [
-                    assistant_message(
-                        None,
-                        [
-                            tool_call(
-                                "call_1",
-                                "edit_file",
-                                '{"path": "example.txt", "old_text": "missing", "new_text": "agent"}',
-                            )
-                        ],
-                    ),
-                    assistant_message(final_answer),
-                ]
-            )
+        file_path = self.root / "example.txt"
+        file_path.write_text("hello world")
+        client = FakeClient(
+            [
+                assistant_message(
+                    None,
+                    [
+                        tool_call(
+                            "call_1",
+                            "edit_file",
+                            '{"path": "example.txt", "old_text": "missing", "new_text": "agent"}',
+                        )
+                    ],
+                ),
+                assistant_message(final_answer),
+            ]
+        )
 
-            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                self.assertEqual(main.run_agent(client, "Update example.txt"), final_answer)
-
-            self.assertEqual(file_path.read_text(), "hello world")
+        self.assertEqual(self.run_agent(client, "Update example.txt"), final_answer)
+        self.assertEqual(file_path.read_text(), "hello world")
 
         second_call_messages = client.completions.calls[1]["messages"]
         self.assertEqual(second_call_messages[2]["role"], "tool")
@@ -164,7 +162,7 @@ class AgentLoopTests(unittest.TestCase):
             ]
         )
 
-        self.assertEqual(main.run_agent(client, "Read the README"), final_answer)
+        self.assertEqual(self.run_agent(client, "Read the README"), final_answer)
 
         second_call_messages = client.completions.calls[1]["messages"]
         self.assertEqual(second_call_messages[2]["role"], "tool")
@@ -183,7 +181,7 @@ class AgentLoopTests(unittest.TestCase):
             ]
         )
 
-        self.assertEqual(main.run_agent(client, "Delete README"), final_answer)
+        self.assertEqual(self.run_agent(client, "Delete README"), final_answer)
 
         second_call_messages = client.completions.calls[1]["messages"]
         self.assertEqual(second_call_messages[2]["role"], "tool")
@@ -193,28 +191,25 @@ class AgentLoopTests(unittest.TestCase):
     def test_run_agent_can_process_create_file_tool_call(self):
         final_answer = fixture_text("create_file_answer.txt")
 
-        with tempfile.TemporaryDirectory() as workspace:
-            file_path = Path(workspace) / "notes.txt"
-            client = FakeClient(
-                [
-                    assistant_message(
-                        None,
-                        [
-                            tool_call(
-                                "call_1",
-                                "create_file",
-                                '{"path": "notes.txt", "content": "hello agent"}',
-                            )
-                        ],
-                    ),
-                    assistant_message(final_answer),
-                ]
-            )
+        file_path = self.root / "notes.txt"
+        client = FakeClient(
+            [
+                assistant_message(
+                    None,
+                    [
+                        tool_call(
+                            "call_1",
+                            "create_file",
+                            '{"path": "notes.txt", "content": "hello agent"}',
+                        )
+                    ],
+                ),
+                assistant_message(final_answer),
+            ]
+        )
 
-            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                self.assertEqual(main.run_agent(client, "Create notes.txt"), final_answer)
-
-            self.assertEqual(file_path.read_text(), "hello agent")
+        self.assertEqual(self.run_agent(client, "Create notes.txt"), final_answer)
+        self.assertEqual(file_path.read_text(), "hello agent")
 
         second_call_messages = client.completions.calls[1]["messages"]
         self.assertEqual(second_call_messages[2]["role"], "tool")
@@ -240,7 +235,7 @@ class AgentLoopTests(unittest.TestCase):
             ]
         )
 
-        self.assertEqual(main.run_agent(client, "Search for Claude"), final_answer)
+        self.assertEqual(self.run_agent(client, "Search for Claude"), final_answer)
 
         second_call_messages = client.completions.calls[1]["messages"]
         self.assertEqual(second_call_messages[2]["role"], "tool")
@@ -261,7 +256,7 @@ class AgentLoopTests(unittest.TestCase):
         stderr = StringIO()
 
         with patch("sys.stderr", stderr):
-            self.assertEqual(main.run_agent(client, "Read README", verbose=True), final_answer)
+            self.assertEqual(self.run_agent(client, "Read README", verbose=True), final_answer)
 
         self.assertIn("Using read_file path=README.md", stderr.getvalue())
         self.assertIn("Tool result: ok", stderr.getvalue())
@@ -291,13 +286,13 @@ class AgentLoopTests(unittest.TestCase):
         )
 
         with self.assertRaisesRegex(RuntimeError, "exceeded maximum tool call rounds"):
-            main.run_agent(client, "Read README", max_tool_rounds=1)
+            self.run_agent(client, "Read README", max_tool_rounds=1)
 
     def test_run_agent_passes_selected_model_to_chat_completion(self):
         final_answer = fixture_text("final_answer.txt")
         client = FakeClient([assistant_message(final_answer)])
 
-        self.assertEqual(main.run_agent(client, "Say hello", model="test/model"), final_answer)
+        self.assertEqual(self.run_agent(client, "Say hello", model="test/model"), final_answer)
 
         self.assertEqual(client.completions.calls[0]["model"], "test/model")
 

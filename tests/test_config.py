@@ -1,3 +1,4 @@
+import tempfile
 import unittest
 from io import StringIO
 from pathlib import Path
@@ -76,13 +77,17 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(args.model, "test/model")
 
     def test_parse_args_accepts_workspace(self):
-        with patch("sys.argv", ["agent", "--prompt", "hello", "--workspace", "."]):
-            args = main.parse_args()
+        with tempfile.TemporaryDirectory() as workspace:
+            root = Path(workspace).resolve()
+            with patch("sys.argv", ["agent", "--prompt", "hello", "--workspace", str(root)]):
+                args = main.parse_args()
 
-        self.assertEqual(args.workspace, Path(".").resolve())
+            self.assertEqual(args.workspace, root)
 
     def test_parse_args_rejects_missing_workspace(self):
-        assert_parse_error(self, ["agent", "--prompt", "hello", "--workspace", "missing"])
+        with tempfile.TemporaryDirectory() as workspace:
+            missing = Path(workspace).resolve() / "missing"
+            assert_parse_error(self, ["agent", "--prompt", "hello", "--workspace", str(missing)])
 
     def test_parse_args_help_describes_agent_options(self):
         stdout = StringIO()

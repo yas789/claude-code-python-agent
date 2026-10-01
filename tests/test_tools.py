@@ -1,194 +1,157 @@
 import json
-import tempfile
 import unittest
-from pathlib import Path
-from unittest.mock import patch
 
 from app import main
+from tests.helpers import WorkspaceTestCase
 
 
-class ToolTests(unittest.TestCase):
+class ToolTests(WorkspaceTestCase):
+    def setUp(self):
+        super().setUp()
+        (self.root / "README.md").write_text("# Claude Code Python Agent\n")
+        (self.root / "app").mkdir()
+
     def test_read_file_can_read_workspace_file(self):
-        self.assertIn("Claude Code Python Agent", main.read_file("README.md"))
+        self.assertIn("Claude Code Python Agent", self.tools.read_file("README.md"))
 
     def test_read_file_rejects_parent_directory_escape(self):
         with self.assertRaisesRegex(RuntimeError, "outside workspace"):
-            main.read_file("../README.md")
+            self.tools.read_file("../README.md")
 
     def test_read_file_rejects_directory_path(self):
         with self.assertRaisesRegex(RuntimeError, "path is not a file"):
-            main.read_file(".")
+            self.tools.read_file(".")
 
     def test_list_files_lists_workspace_entries(self):
-        files = json.loads(main.list_files("."))["entries"]
+        files = json.loads(self.tools.list_files("."))["entries"]
 
         self.assertIn("README.md", files)
         self.assertIn("app", files)
 
     def test_list_files_rejects_parent_directory_escape(self):
         with self.assertRaisesRegex(RuntimeError, "outside workspace"):
-            main.list_files("..")
+            self.tools.list_files("..")
 
     def test_list_files_rejects_file_path(self):
         with self.assertRaisesRegex(RuntimeError, "path is not a directory"):
-            main.list_files("README.md")
+            self.tools.list_files("README.md")
 
     def test_edit_file_replaces_exact_text_once(self):
-        with tempfile.TemporaryDirectory() as workspace:
-            file_path = Path(workspace) / "example.txt"
-            file_path.write_text("hello world")
+        file_path = self.root / "example.txt"
+        file_path.write_text("hello world")
+        result = self.tools.edit_file("example.txt", "world", "agent")
 
-            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                result = main.edit_file("example.txt", "world", "agent")
-
-            self.assertEqual(
-                json.loads(result),
-                {
-                    "status": "updated",
-                    "path": "example.txt",
-                    "replacements": 1,
-                },
-            )
-            self.assertEqual(file_path.read_text(), "hello agent")
+        self.assertEqual(
+            json.loads(result),
+            {
+                "status": "updated",
+                "path": "example.txt",
+                "replacements": 1,
+            },
+        )
+        self.assertEqual(file_path.read_text(), "hello agent")
 
     def test_edit_file_rejects_missing_old_text(self):
-        with tempfile.TemporaryDirectory() as workspace:
-            file_path = Path(workspace) / "example.txt"
-            file_path.write_text("hello world")
-
-            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                with self.assertRaisesRegex(RuntimeError, "old_text not found"):
-                    main.edit_file("example.txt", "missing", "agent")
+        file_path = self.root / "example.txt"
+        file_path.write_text("hello world")
+        with self.assertRaisesRegex(RuntimeError, "old_text not found"):
+            self.tools.edit_file("example.txt", "missing", "agent")
 
     def test_edit_file_rejects_duplicate_old_text(self):
-        with tempfile.TemporaryDirectory() as workspace:
-            file_path = Path(workspace) / "example.txt"
-            file_path.write_text("hello hello")
-
-            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                with self.assertRaisesRegex(RuntimeError, "old_text appears multiple times"):
-                    main.edit_file("example.txt", "hello", "agent")
+        file_path = self.root / "example.txt"
+        file_path.write_text("hello hello")
+        with self.assertRaisesRegex(RuntimeError, "old_text appears multiple times"):
+            self.tools.edit_file("example.txt", "hello", "agent")
 
     def test_edit_file_rejects_parent_directory_escape(self):
-        with tempfile.TemporaryDirectory() as workspace:
-            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                with self.assertRaisesRegex(RuntimeError, "outside workspace"):
-                    main.edit_file("../example.txt", "old", "new")
+        with self.assertRaisesRegex(RuntimeError, "outside workspace"):
+            self.tools.edit_file("../example.txt", "old", "new")
 
     def test_edit_file_rejects_directory_path(self):
-        with tempfile.TemporaryDirectory() as workspace:
-            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                with self.assertRaisesRegex(RuntimeError, "path is not a file"):
-                    main.edit_file(".", "old", "new")
+        with self.assertRaisesRegex(RuntimeError, "path is not a file"):
+            self.tools.edit_file(".", "old", "new")
 
     def test_create_file_writes_new_file(self):
-        with tempfile.TemporaryDirectory() as workspace:
-            file_path = Path(workspace) / "created.txt"
+        file_path = self.root / "created.txt"
+        result = self.tools.create_file("created.txt", "hello agent")
 
-            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                result = main.create_file("created.txt", "hello agent")
-
-            self.assertEqual(
-                json.loads(result),
-                {
-                    "status": "created",
-                    "path": "created.txt",
-                    "chars_written": 11,
-                },
-            )
-            self.assertEqual(file_path.read_text(), "hello agent")
+        self.assertEqual(
+            json.loads(result),
+            {
+                "status": "created",
+                "path": "created.txt",
+                "chars_written": 11,
+            },
+        )
+        self.assertEqual(file_path.read_text(), "hello agent")
 
     def test_create_file_rejects_existing_file(self):
-        with tempfile.TemporaryDirectory() as workspace:
-            file_path = Path(workspace) / "existing.txt"
-            file_path.write_text("already here")
+        file_path = self.root / "existing.txt"
+        file_path.write_text("already here")
+        with self.assertRaisesRegex(RuntimeError, "file already exists"):
+            self.tools.create_file("existing.txt", "new content")
 
-            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                with self.assertRaisesRegex(RuntimeError, "file already exists"):
-                    main.create_file("existing.txt", "new content")
-
-            self.assertEqual(file_path.read_text(), "already here")
+        self.assertEqual(file_path.read_text(), "already here")
 
     def test_create_file_rejects_parent_directory_escape(self):
-        with tempfile.TemporaryDirectory() as workspace:
-            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                with self.assertRaisesRegex(RuntimeError, "outside workspace"):
-                    main.create_file("../created.txt", "hello")
+        with self.assertRaisesRegex(RuntimeError, "outside workspace"):
+            self.tools.create_file("../created.txt", "hello")
 
     def test_create_file_rejects_missing_parent_directory(self):
-        with tempfile.TemporaryDirectory() as workspace:
-            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                with self.assertRaisesRegex(RuntimeError, "parent directory does not exist"):
-                    main.create_file("missing/created.txt", "hello")
+        with self.assertRaisesRegex(RuntimeError, "parent directory does not exist"):
+            self.tools.create_file("missing/created.txt", "hello")
 
     def test_search_files_returns_matching_lines(self):
-        with tempfile.TemporaryDirectory() as workspace:
-            file_path = Path(workspace) / "example.txt"
-            file_path.write_text("alpha\nbeta target\ngamma target")
+        file_path = self.root / "example.txt"
+        file_path.write_text("alpha\nbeta target\ngamma target")
+        result = json.loads(self.tools.search_files("target", "."))["results"]
 
-            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                result = json.loads(main.search_files("target", "."))["results"]
-
-            self.assertEqual(
-                result,
-                [
-                    {
-                        "path": "example.txt",
-                        "line": 2,
-                        "text": "beta target",
-                        "text_truncated": False,
-                    },
-                    {
-                        "path": "example.txt",
-                        "line": 3,
-                        "text": "gamma target",
-                        "text_truncated": False,
-                    },
-                ],
-            )
+        self.assertEqual(
+            result,
+            [
+                {
+                    "path": "example.txt",
+                    "line": 2,
+                    "text": "beta target",
+                    "text_truncated": False,
+                },
+                {
+                    "path": "example.txt",
+                    "line": 3,
+                    "text": "gamma target",
+                    "text_truncated": False,
+                },
+            ],
+        )
 
     def test_search_files_returns_no_matches(self):
-        with tempfile.TemporaryDirectory() as workspace:
-            file_path = Path(workspace) / "example.txt"
-            file_path.write_text("alpha")
-
-            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                self.assertEqual(json.loads(main.search_files("missing", "."))["results"], [])
+        file_path = self.root / "example.txt"
+        file_path.write_text("alpha")
+        self.assertEqual(json.loads(self.tools.search_files("missing", "."))["results"], [])
 
     def test_search_files_rejects_parent_directory_escape(self):
-        with tempfile.TemporaryDirectory() as workspace:
-            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                with self.assertRaisesRegex(RuntimeError, "outside workspace"):
-                    main.search_files("target", "..")
+        with self.assertRaisesRegex(RuntimeError, "outside workspace"):
+            self.tools.search_files("target", "..")
 
     def test_search_files_rejects_file_path(self):
-        with tempfile.TemporaryDirectory() as workspace:
-            file_path = Path(workspace) / "example.txt"
-            file_path.write_text("target")
-
-            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                with self.assertRaisesRegex(RuntimeError, "path is not a directory"):
-                    main.search_files("target", "example.txt")
+        file_path = self.root / "example.txt"
+        file_path.write_text("target")
+        with self.assertRaisesRegex(RuntimeError, "path is not a directory"):
+            self.tools.search_files("target", "example.txt")
 
     def test_search_files_ignores_configured_directories(self):
-        with tempfile.TemporaryDirectory() as workspace:
-            ignored_path = Path(workspace) / "__pycache__"
-            ignored_path.mkdir()
-            (ignored_path / "ignored.txt").write_text("target")
-
-            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                self.assertEqual(json.loads(main.search_files("target", "."))["results"], [])
+        ignored_path = self.root / "__pycache__"
+        ignored_path.mkdir()
+        (ignored_path / "ignored.txt").write_text("target")
+        self.assertEqual(json.loads(self.tools.search_files("target", "."))["results"], [])
 
     def test_search_files_limits_results(self):
-        with tempfile.TemporaryDirectory() as workspace:
-            for index in range(main.MAX_SEARCH_RESULTS + 5):
-                file_path = Path(workspace) / f"example_{index}.txt"
-                file_path.write_text("target")
+        for index in range(main.MAX_SEARCH_RESULTS + 5):
+            file_path = self.root / f"example_{index}.txt"
+            file_path.write_text("target")
+        result = self.tools.search_files("target", ".")
 
-            with patch.object(main, "WORKSPACE_ROOT", Path(workspace)):
-                result = main.search_files("target", ".")
-
-            self.assertEqual(len(json.loads(result)["results"]), main.MAX_SEARCH_RESULTS)
+        self.assertEqual(len(json.loads(result)["results"]), main.MAX_SEARCH_RESULTS)
 
 
 if __name__ == "__main__":

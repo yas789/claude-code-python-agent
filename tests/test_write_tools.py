@@ -1,6 +1,4 @@
 import json
-import tempfile
-import unittest
 from pathlib import Path
 from unittest.mock import patch
 
@@ -8,16 +6,11 @@ from app import main
 from tests import helpers
 
 
-class WriteToolTests(unittest.TestCase):
+class WriteToolTests(helpers.WorkspaceTestCase):
     def setUp(self):
-        self.workspace = tempfile.TemporaryDirectory()
-        self.addCleanup(self.workspace.cleanup)
-        self.root = Path(self.workspace.name)
+        super().setUp()
         self.file = self.root / "example.txt"
         self.file.write_text("hello world", encoding="utf-8")
-        workspace_patch = patch.object(main, "WORKSPACE_ROOT", self.root)
-        workspace_patch.start()
-        self.addCleanup(workspace_patch.stop)
 
     def test_edit_rejects_invalid_arguments_without_changing_file(self):
         cases = [
@@ -38,13 +31,13 @@ class WriteToolTests(unittest.TestCase):
                 arguments = {"path": "example.txt", "old_text": "world", "new_text": "agent"}
                 arguments[name] = value
                 with self.assertRaisesRegex(RuntimeError, f"{name} must"):
-                    main.edit_file(**arguments)
+                    self.tools.edit_file(**arguments)
                 self.assertEqual(self.file.read_text(), "hello world")
 
     def test_edit_rejects_empty_target_in_empty_file(self):
         self.file.write_text("")
         with self.assertRaisesRegex(RuntimeError, "old_text must not be empty"):
-            main.edit_file("example.txt", "", "new")
+            self.tools.edit_file("example.txt", "", "new")
         self.assertEqual(self.file.read_text(), "")
 
     def test_agent_receives_edit_validation_error_without_mutation(self):
@@ -63,7 +56,7 @@ class WriteToolTests(unittest.TestCase):
                 helpers.assistant_message("Choose a precise replacement target."),
             ]
         )
-        main.run_agent(client, "Edit the file")
+        self.run_agent(client, "Edit the file")
         self.assertEqual(
             client.completions.calls[1]["messages"][2]["content"],
             "error: old_text must not be empty",
@@ -72,7 +65,7 @@ class WriteToolTests(unittest.TestCase):
 
     def test_edit_receipt_is_compact_and_does_not_echo_content(self):
         replacement = "private text " * 10000
-        result = main.edit_file("./example.txt", "world", replacement)
+        result = self.tools.edit_file("./example.txt", "world", replacement)
         self.assertEqual(
             json.loads(result),
             {
@@ -86,9 +79,9 @@ class WriteToolTests(unittest.TestCase):
         self.assertEqual(self.file.read_text(), "hello " + replacement)
 
     def test_edit_allows_deletion_and_unicode_replacement(self):
-        main.edit_file("example.txt", "world", "")
+        self.tools.edit_file("example.txt", "world", "")
         self.assertEqual(self.file.read_text(), "hello ")
-        result = json.loads(main.edit_file("example.txt", "hello", "🙂終"))
+        result = json.loads(self.tools.edit_file("example.txt", "hello", "🙂終"))
         self.assertEqual(result["replacements"], 1)
         self.assertEqual(self.file.read_text(encoding="utf-8"), "🙂終 ")
 
@@ -118,7 +111,7 @@ class WriteToolTests(unittest.TestCase):
                 helpers.assistant_message("Updated example.txt."),
             ]
         )
-        self.assertEqual(main.run_agent(client, "Update the file"), "Updated example.txt.")
+        self.assertEqual(self.run_agent(client, "Update the file"), "Updated example.txt.")
         receipt = json.loads(client.completions.calls[2]["messages"][4]["content"])
         self.assertEqual(receipt["status"], "updated")
         self.assertEqual(receipt["replacements"], 1)
@@ -140,17 +133,17 @@ class WriteToolTests(unittest.TestCase):
                 arguments = {"path": "new.txt", "content": "new"}
                 arguments[name] = value
                 with self.assertRaisesRegex(RuntimeError, f"{name} must"):
-                    main.create_file(**arguments)
+                    self.tools.create_file(**arguments)
                 self.assertFalse((self.root / "new.txt").exists())
 
     def test_create_rejects_unencodable_text_without_leaving_a_file(self):
         with self.assertRaisesRegex(RuntimeError, "content must be valid UTF-8 text"):
-            main.create_file("new.txt", "\ud800")
+            self.tools.create_file("new.txt", "\ud800")
         self.assertFalse((self.root / "new.txt").exists())
 
     def test_create_writes_full_content_and_returns_compact_receipt(self):
         content = "🙂 private text\r\n" * 10000
-        result = main.create_file("./new.txt", content)
+        result = self.tools.create_file("./new.txt", content)
         self.assertEqual(
             json.loads(result),
             {
@@ -164,7 +157,7 @@ class WriteToolTests(unittest.TestCase):
         self.assertEqual((self.root / "new.txt").read_bytes(), content.encode("utf-8"))
 
     def test_create_allows_empty_content(self):
-        receipt = json.loads(main.create_file("empty.txt", ""))
+        receipt = json.loads(self.tools.create_file("empty.txt", ""))
         self.assertEqual(receipt["chars_written"], 0)
         self.assertEqual((self.root / "empty.txt").read_bytes(), b"")
 
@@ -177,7 +170,7 @@ class WriteToolTests(unittest.TestCase):
 
         with patch.object(main, "open", side_effect=concurrent_open, create=True):
             with self.assertRaisesRegex(RuntimeError, "file already exists"):
-                main.create_file("new.txt", "agent content")
+                self.tools.create_file("new.txt", "agent content")
         self.assertEqual((self.root / "new.txt").read_text(), "concurrent content")
 
     def test_agent_recovers_from_invalid_creation_and_receives_receipt(self):
@@ -206,7 +199,7 @@ class WriteToolTests(unittest.TestCase):
                 helpers.assistant_message("Created new.txt."),
             ]
         )
-        self.assertEqual(main.run_agent(client, "Create a file"), "Created new.txt.")
+        self.assertEqual(self.run_agent(client, "Create a file"), "Created new.txt.")
         self.assertEqual(
             client.completions.calls[1]["messages"][2]["content"], "error: content must be a string"
         )
