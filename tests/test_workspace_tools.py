@@ -129,8 +129,12 @@ class WorkspaceToolTests(helpers.WorkspaceTestCase):
             ]
         )
         self.assertEqual(self.run_agent(client, "List entries"), "Found alpha, beta, and gamma.")
-        first = json.loads(client.completions.calls[1]["messages"][2]["content"])
-        second = json.loads(client.completions.calls[2]["messages"][4]["content"])
+        first = json.loads(
+            helpers.tool_result(client.completions.calls[1]["messages"], "first")["content"]
+        )
+        second = json.loads(
+            helpers.tool_result(client.completions.calls[2]["messages"], "second")["content"]
+        )
         self.assertEqual(first["next_offset"], 3)
         self.assertEqual(first["entries"] + second["entries"], ["alpha", "beta", "gamma"])
         self.assertFalse(second["truncated"])
@@ -154,7 +158,7 @@ class WorkspaceToolTests(helpers.WorkspaceTestCase):
         )
         self.run_agent(client, "List entries")
         self.assertEqual(
-            client.completions.calls[1]["messages"][2]["content"],
+            helpers.tool_result(client.completions.calls[1]["messages"], "small")["content"],
             "error: entry name exceeds max_chars; increase max_chars",
         )
 
@@ -397,7 +401,10 @@ class WorkspaceToolTests(helpers.WorkspaceTestCase):
         )
         self.assertEqual(self.run_agent(client, "Find target"), "Found both target lines.")
         messages = client.completions.calls[3]["messages"]
-        first, second, detail = [json.loads(messages[index]["content"]) for index in (2, 4, 6)]
+        first, second, detail = [
+            json.loads(helpers.tool_result(messages, call_id)["content"])
+            for call_id in ("first", "second", "detail")
+        ]
         self.assertEqual(first["next_offset"], 2)
         self.assertTrue(first["results"][0]["text_truncated"])
         self.assertEqual(second["results"][0]["line"], 2)
@@ -433,7 +440,10 @@ class WorkspaceToolTests(helpers.WorkspaceTestCase):
         )
         self.assertEqual(self.run_agent(client, "Find target"), "Found target.")
         self.assertEqual(
-            client.completions.calls[1]["messages"][2]["content"], "error: query must not be empty"
+            helpers.tool_result(client.completions.calls[1]["messages"], "invalid")["content"],
+            "error: query must not be empty",
         )
-        result = json.loads(client.completions.calls[2]["messages"][4]["content"])
+        result = json.loads(
+            helpers.tool_result(client.completions.calls[2]["messages"], "valid")["content"]
+        )
         self.assertEqual(result["results"][0]["path"], "example.txt")

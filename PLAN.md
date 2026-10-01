@@ -13,8 +13,8 @@ Every step requires focused tests, formatting/lint checks when available, and
 - [x] 2. Configure Ruff and normalize formatting/imports. Verify lint and tests.
 - [x] 3. Use installed dependencies and remove global SDK stubs. Verify independent imports.
 - [x] 4. Isolate filesystem tests with shared temporary-workspace setup. Verify tests.
-- [~] 5. Stabilize fake clients and add call-ID lookup. Verify helper regressions.
-- [ ] 6. Make contracts unconditional and assert CLI exit codes. Verify focused tests.
+- [x] 5. Stabilize fake clients and add call-ID lookup. Verify helper regressions.
+- [~] 6. Make contracts unconditional and assert CLI exit codes. Verify focused tests.
 - [ ] 7. Extract consistently named limits/defaults. Verify schemas and tests.
 - [ ] 8. Extract validation and explicit errors. Verify invalid-input behavior.
 - [ ] 9. Apply shared validation to reads. Verify read boundaries and invalid paths.
@@ -36,3 +36,4 @@ Every step requires focused tests, formatting/lint checks when available, and
 2. Locked Ruff installed; formatting, lint, all 136 tests, and diff checks passed.
 3. Independent schema/config imports and all 136 tests passed; lint/format/diff clean.
 4. Shared temporary fixtures isolate filesystem inputs; all 136 tests and quality checks passed.
+5. Stable fake snapshots and call-ID lookup verified; 142 tests and quality checks passed.

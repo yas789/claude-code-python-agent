@@ -58,7 +58,7 @@ class WriteToolTests(helpers.WorkspaceTestCase):
         )
         self.run_agent(client, "Edit the file")
         self.assertEqual(
-            client.completions.calls[1]["messages"][2]["content"],
+            helpers.tool_result(client.completions.calls[1]["messages"], "invalid")["content"],
             "error: old_text must not be empty",
         )
         self.assertEqual(self.file.read_text(), "hello world")
@@ -112,7 +112,9 @@ class WriteToolTests(helpers.WorkspaceTestCase):
             ]
         )
         self.assertEqual(self.run_agent(client, "Update the file"), "Updated example.txt.")
-        receipt = json.loads(client.completions.calls[2]["messages"][4]["content"])
+        receipt = json.loads(
+            helpers.tool_result(client.completions.calls[2]["messages"], "valid")["content"]
+        )
         self.assertEqual(receipt["status"], "updated")
         self.assertEqual(receipt["replacements"], 1)
         self.assertEqual(self.file.read_text(), "hello agent")
@@ -201,8 +203,11 @@ class WriteToolTests(helpers.WorkspaceTestCase):
         )
         self.assertEqual(self.run_agent(client, "Create a file"), "Created new.txt.")
         self.assertEqual(
-            client.completions.calls[1]["messages"][2]["content"], "error: content must be a string"
+            helpers.tool_result(client.completions.calls[1]["messages"], "invalid")["content"],
+            "error: content must be a string",
         )
-        result = json.loads(client.completions.calls[2]["messages"][4]["content"])
+        result = json.loads(
+            helpers.tool_result(client.completions.calls[2]["messages"], "valid")["content"]
+        )
         self.assertEqual(result, {"status": "created", "path": "new.txt", "chars_written": 5})
         self.assertEqual((self.root / "new.txt").read_text(), "hello")

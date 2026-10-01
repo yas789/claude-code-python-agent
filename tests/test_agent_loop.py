@@ -11,6 +11,7 @@ from tests.helpers import (
     final_message_without_tool_calls,
     fixture_text,
     tool_call,
+    tool_result,
 )
 
 
@@ -51,7 +52,9 @@ class AgentLoopTests(WorkspaceTestCase):
         self.assertEqual(second_call_messages[1].tool_calls[0].id, "call_1")
         self.assertEqual(second_call_messages[2]["role"], "tool")
         self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
-        self.assertIn("Claude Code Python Agent", second_call_messages[2]["content"])
+        self.assertIn(
+            "Claude Code Python Agent", tool_result(second_call_messages, "call_1")["content"]
+        )
 
     def test_run_agent_can_process_multiple_tool_rounds(self):
         final_answer = fixture_text("workspace_listing_answer.txt")
@@ -82,8 +85,10 @@ class AgentLoopTests(WorkspaceTestCase):
         self.assertEqual(
             [message["tool_call_id"] for message in tool_results], ["call_1", "call_2"]
         )
-        self.assertIn("README.md", tool_results[0]["content"])
-        self.assertIn("Claude Code Python Agent", tool_results[1]["content"])
+        self.assertIn("README.md", tool_result(final_call_messages, "call_1")["content"])
+        self.assertIn(
+            "Claude Code Python Agent", tool_result(final_call_messages, "call_2")["content"]
+        )
 
     def test_run_agent_can_process_edit_file_tool_call(self):
         final_answer = fixture_text("edit_file_answer.txt")
@@ -110,10 +115,8 @@ class AgentLoopTests(WorkspaceTestCase):
         self.assertEqual(file_path.read_text(), "hello agent")
 
         second_call_messages = client.completions.calls[1]["messages"]
-        self.assertEqual(second_call_messages[2]["role"], "tool")
-        self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
         self.assertEqual(
-            json.loads(second_call_messages[2]["content"]),
+            json.loads(tool_result(second_call_messages, "call_1")["content"]),
             {
                 "status": "updated",
                 "path": "example.txt",
@@ -146,9 +149,9 @@ class AgentLoopTests(WorkspaceTestCase):
         self.assertEqual(file_path.read_text(), "hello world")
 
         second_call_messages = client.completions.calls[1]["messages"]
-        self.assertEqual(second_call_messages[2]["role"], "tool")
-        self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
-        self.assertEqual(second_call_messages[2]["content"], "error: old_text not found")
+        self.assertEqual(
+            tool_result(second_call_messages, "call_1")["content"], "error: old_text not found"
+        )
 
     def test_run_agent_returns_malformed_tool_arguments_to_model(self):
         final_answer = fixture_text("tool_error_answer.txt")
@@ -165,9 +168,7 @@ class AgentLoopTests(WorkspaceTestCase):
         self.assertEqual(self.run_agent(client, "Read the README"), final_answer)
 
         second_call_messages = client.completions.calls[1]["messages"]
-        self.assertEqual(second_call_messages[2]["role"], "tool")
-        self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
-        self.assertIn("error:", second_call_messages[2]["content"])
+        self.assertIn("error:", tool_result(second_call_messages, "call_1")["content"])
 
     def test_run_agent_returns_unknown_tool_errors_to_model(self):
         final_answer = fixture_text("tool_error_answer.txt")
@@ -184,9 +185,10 @@ class AgentLoopTests(WorkspaceTestCase):
         self.assertEqual(self.run_agent(client, "Delete README"), final_answer)
 
         second_call_messages = client.completions.calls[1]["messages"]
-        self.assertEqual(second_call_messages[2]["role"], "tool")
-        self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
-        self.assertEqual(second_call_messages[2]["content"], "error: unknown tool: delete_file")
+        self.assertEqual(
+            tool_result(second_call_messages, "call_1")["content"],
+            "error: unknown tool: delete_file",
+        )
 
     def test_run_agent_can_process_create_file_tool_call(self):
         final_answer = fixture_text("create_file_answer.txt")
@@ -212,10 +214,8 @@ class AgentLoopTests(WorkspaceTestCase):
         self.assertEqual(file_path.read_text(), "hello agent")
 
         second_call_messages = client.completions.calls[1]["messages"]
-        self.assertEqual(second_call_messages[2]["role"], "tool")
-        self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
         self.assertEqual(
-            json.loads(second_call_messages[2]["content"]),
+            json.loads(tool_result(second_call_messages, "call_1")["content"]),
             {
                 "status": "created",
                 "path": "notes.txt",
@@ -238,9 +238,7 @@ class AgentLoopTests(WorkspaceTestCase):
         self.assertEqual(self.run_agent(client, "Search for Claude"), final_answer)
 
         second_call_messages = client.completions.calls[1]["messages"]
-        self.assertEqual(second_call_messages[2]["role"], "tool")
-        self.assertEqual(second_call_messages[2]["tool_call_id"], "call_1")
-        self.assertIn("README.md", second_call_messages[2]["content"])
+        self.assertIn("README.md", tool_result(second_call_messages, "call_1")["content"])
 
     def test_run_agent_logs_tool_calls_in_verbose_mode(self):
         final_answer = fixture_text("readme_summary.txt")

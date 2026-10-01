@@ -253,8 +253,12 @@ class FileReadTests(helpers.WorkspaceTestCase):
             ]
         )
         self.assertEqual(self.run_agent(client, "Read from line 2"), "Read beta and gamma.")
-        first = json.loads(client.completions.calls[1]["messages"][2]["content"])
-        second = json.loads(client.completions.calls[2]["messages"][4]["content"])
+        first = json.loads(
+            helpers.tool_result(client.completions.calls[1]["messages"], "first")["content"]
+        )
+        second = json.loads(
+            helpers.tool_result(client.completions.calls[2]["messages"], "second")["content"]
+        )
         self.assertEqual(first["content"], "beta\n")
         self.assertEqual(first["next_offset"], 3)
         self.assertEqual(second["content"], "gamma\n")
@@ -287,10 +291,12 @@ class FileReadTests(helpers.WorkspaceTestCase):
             ]
         )
         self.assertEqual(self.run_agent(client, "Read the file"), "Read all three lines.")
-        error = client.completions.calls[1]["messages"][2]
+        error = helpers.tool_result(client.completions.calls[1]["messages"], "small")
         self.assertEqual(error["tool_call_id"], "small")
         self.assertIn("error: line 1 exceeds max_chars=5; increase", error["content"])
-        result = json.loads(client.completions.calls[2]["messages"][4]["content"])
+        result = json.loads(
+            helpers.tool_result(client.completions.calls[2]["messages"], "larger")["content"]
+        )
         self.assertEqual(result["content"], self.file.read_text())
         self.assertFalse(result["truncated"])
 
@@ -311,5 +317,5 @@ class FileReadTests(helpers.WorkspaceTestCase):
             ]
         )
         self.run_agent(client, "Read a range")
-        result = client.completions.calls[1]["messages"][2]
+        result = helpers.tool_result(client.completions.calls[1]["messages"], "invalid")
         self.assertEqual(result["content"], "error: offset must be a positive integer")
