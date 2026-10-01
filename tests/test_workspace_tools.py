@@ -284,3 +284,79 @@ class WorkspaceToolTests(unittest.TestCase):
             with self.subTest(offset=value):
                 with self.assertRaisesRegex(RuntimeError, "offset must be a positive integer"):
                     self.search(offset=value)
+
+    def test_search_unicode_and_newline_variants_preserve_line_numbers(self):
+        for newline in ("\n", "\r\n", "\r"):
+            with self.subTest(newline=newline):
+                (self.root / "unicode.txt").write_bytes(
+                    newline.join(("skip", "🙂 target", "終 target")).encode("utf-8")
+                )
+                result = self.search(max_chars=8)
+                self.assertEqual(result["results"][0]["text"], "🙂 target")
+                self.assertFalse(result["results"][0]["text_truncated"])
+                self.assertEqual(result["next_offset"], 2)
+                final = self.search(offset=2, max_chars=8)
+                self.assertEqual(final["results"][0]["line"], 3)
+                self.assertEqual(final["results"][0]["text"], "終 target")
+
+    def test_search_skips_undecodable_and_unreadable_files(self):
+        (self.root / "binary.txt").write_bytes(b"\xfftarget")
+        (self.root / "readable.txt").write_text("target")
+        (self.root / "unreadable.txt").touch()
+        original_open = open
+
+        def selective_open(path, *args, **kwargs):
+            if Path(path).name == "unreadable.txt":
+                raise PermissionError("permission denied")
+            return original_open(path, *args, **kwargs)
+
+        with patch.object(main, "open", side_effect=selective_open, create=True):
+            result = self.search()
+        self.assertEqual([match["path"] for match in result["results"]], ["readable.txt"])
+        self.assertFalse(result["truncated"])
+
+    def test_search_maximum_query_matches_across_chunks(self):
+        query = "a" * main.MAX_SEARCH_QUERY
+        reader = SearchReader("x" + query + "\n")
+        result = list(main.iter_matching_lines(reader, query, 5))
+        self.assertEqual(result, [(1, "xaaaa", True)])
+
+    def test_agent_continues_search_and_reads_a_clipped_match(self):
+        (self.root / "example.txt").write_text("target one\ntarget two\n")
+        client = helpers.FakeClient([
+            helpers.assistant_message(None, [helpers.tool_call(
+                "first", "search_files", '{"query": "target", "path": ".", "max_chars": 3}',
+            )]),
+            helpers.assistant_message(None, [helpers.tool_call(
+                "second", "search_files", '{"query": "target", "path": ".", "offset": 2}',
+            )]),
+            helpers.assistant_message(None, [helpers.tool_call(
+                "detail", "read_file", '{"path": "example.txt", "offset": 1, "limit": 1}',
+            )]),
+            helpers.assistant_message("Found both target lines."),
+        ])
+        self.assertEqual(main.run_agent(client, "Find target"), "Found both target lines.")
+        messages = client.completions.calls[3]["messages"]
+        first, second, detail = [json.loads(messages[index]["content"]) for index in (2, 4, 6)]
+        self.assertEqual(first["next_offset"], 2)
+        self.assertTrue(first["results"][0]["text_truncated"])
+        self.assertEqual(second["results"][0]["line"], 2)
+        self.assertFalse(second["truncated"])
+        self.assertEqual(detail["content"], "target one\n")
+
+    def test_agent_recovers_from_invalid_search_query(self):
+        (self.root / "example.txt").write_text("target")
+        client = helpers.FakeClient([
+            helpers.assistant_message(None, [helpers.tool_call(
+                "invalid", "search_files", '{"query": "", "path": "."}',
+            )]),
+            helpers.assistant_message(None, [helpers.tool_call(
+                "valid", "search_files", '{"query": "target", "path": "."}',
+            )]),
+            helpers.assistant_message("Found target."),
+        ])
+        self.assertEqual(main.run_agent(client, "Find target"), "Found target.")
+        self.assertEqual(client.completions.calls[1]["messages"][2]["content"],
+                         "error: query must not be empty")
+        result = json.loads(client.completions.calls[2]["messages"][4]["content"])
+        self.assertEqual(result["results"][0]["path"], "example.txt")
