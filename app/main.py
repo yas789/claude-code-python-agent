@@ -108,7 +108,8 @@ TOOLS = [
                     },
                     "old_text": {
                         "type": "string",
-                        "description": "The exact existing text to replace.",
+                        "minLength": 1,
+                        "description": "The nonempty exact existing text to replace; must occur once.",
                     },
                     "new_text": {
                         "type": "string",
@@ -293,6 +294,9 @@ def list_files(path, offset=1, limit=DEFAULT_LIST_ENTRIES, max_chars=DEFAULT_TOO
 
 
 def edit_file(path, old_text, new_text):
+    validate_path(path)
+    validate_text("old_text", old_text)
+    validate_text("new_text", new_text, allow_empty=True)
     file_path = resolve_workspace_path(path, "file")
     if not file_path.is_file():
         raise RuntimeError(f"path is not a file: {path}")

@@ -57,9 +57,10 @@ silently caps results and loads whole files. Write tools return plain text.
 - [x] 11. Verify search boundaries and recovery.
   Verification: Unicode, newline variants, unreadable files, and agent-loop tests.
   Result: all 48 focused/agent tests and diff checks passed, including maximum-length queries crossing chunks.
-- [~] 12. Validate edit arguments before writing.
+- [x] 12. Validate edit arguments before writing.
   Verification: empty targets, incorrect types, and unchanged files on failure.
-- [ ] 13. Return structured edit receipts.
+  Result: all 26 focused/tool-contract tests and diff checks passed; validation failures preserve file contents.
+- [~] 13. Return structured edit receipts.
   Verification: replacement counts, deletion, and agent integration.
 - [ ] 14. Validate creation and return structured receipts.
   Verification: full content, empty files, existing-file protection, and agent integration.
