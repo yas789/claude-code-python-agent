@@ -36,7 +36,7 @@ tool behavior and agent control flow.
       metadata. See [README.md](README.md#bounded-file-reads) for the contract and
       [FILE_READ_PLAN.md](FILE_READ_PLAN.md) for the verified implementation steps.
 - [x] Bound successful listing/search output with explicit truncation metadata
-      and return compact write receipts. See [PLAN.md](PLAN.md) for the verified
+      and return compact write receipts. See [WORKSPACE_TOOLS_PLAN.md](WORKSPACE_TOOLS_PLAN.md) for the verified
       implementation steps.
 - [ ] Distinguish tool rounds from model requests and allow a final summary when
       the tool budget is exhausted.
