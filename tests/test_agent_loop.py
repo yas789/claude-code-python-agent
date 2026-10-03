@@ -308,7 +308,7 @@ class AgentLoopTests(WorkspaceTestCase):
             patch("app.registry.json.loads", wraps=json.loads) as decode,
             patch("sys.stderr", StringIO()),
         ):
-            main.append_tool_results(messages, message, verbose=True)
+            main.append_tool_results(messages, message, verbose=True, tools=self.registry)
         argument_decodes = [
             call for call in decode.call_args_list if call.args == ('{"path": "README.md"}',)
         ]

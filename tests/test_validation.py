@@ -1,8 +1,10 @@
 import unittest
 from unittest.mock import patch
 
+from app import main
 from app.errors import AgentError, ConfigurationError, ToolError
 from app.validation import validate_path, validate_positive_integer, validate_text
+from app.workspace import Workspace
 from tests import helpers
 
 
@@ -52,7 +54,7 @@ class PrimitiveValidationTests(unittest.TestCase):
 class ToolErrorTests(helpers.WorkspaceTestCase):
     def test_workspace_escape_raises_tool_error(self):
         with self.assertRaisesRegex(ToolError, "^file is outside workspace: ../outside.txt$"):
-            self.tools.resolve_workspace_path("../outside.txt", "file")
+            self.tools.workspace.resolve_file("../outside.txt")
 
     def test_tool_failures_use_tool_error(self):
         cases = (
@@ -75,10 +77,12 @@ class ToolErrorTests(helpers.WorkspaceTestCase):
         (self.root / "example.txt").write_text("example", encoding="utf-8")
         for error in (ToolError("outside workspace"), OSError("unreadable")):
             with self.subTest(error=type(error)):
-                with patch.object(self.tools, "resolve_workspace_path", side_effect=error):
-                    self.assertEqual(list(self.tools.iter_search_files(self.root)), [])
+                with patch.object(Workspace, "resolve_file", side_effect=error):
+                    self.assertEqual(
+                        list(main.iter_search_files(self.tools.workspace, self.root)), []
+                    )
         with patch.object(
-            self.tools, "resolve_workspace_path", side_effect=RuntimeError("unexpected failure")
+            Workspace, "resolve_file", side_effect=RuntimeError("unexpected failure")
         ):
             with self.assertRaisesRegex(RuntimeError, "^unexpected failure$"):
-                list(self.tools.iter_search_files(self.root))
+                list(main.iter_search_files(self.tools.workspace, self.root))

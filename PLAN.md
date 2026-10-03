@@ -20,8 +20,8 @@ Every step requires focused tests, formatting/lint checks when available, and
 - [x] 9. Apply shared validation to reads. Verify read boundaries and invalid paths.
 - [x] 10. Centralize registry and argument decoding. Verify malformed calls in verbose mode.
 - [x] 11. Extract bounded logging and JSON-aware summaries. Verify diagnostics.
-- [~] 12. Introduce explicit workspace context. Verify independent workspaces.
-- [ ] 13. Extract read/list operations. Verify pagination and bounded I/O.
+- [x] 12. Introduce explicit workspace context. Verify independent workspaces.
+- [~] 13. Extract read/list operations. Verify pagination and bounded I/O.
 - [ ] 14. Extract writes and pre-encode edits. Verify failures preserve files.
 - [ ] 15. Extract search and deterministic iterator cleanup. Verify search contracts.
 - [ ] 16. Isolate provider and runtime configuration. Verify environment changes.
@@ -45,3 +45,7 @@ Every step requires focused tests, formatting/lint checks when available, and
 11. Bounded diagnostics and JSON counts/ranges/truncation verified; preserved step 10
     regression tests (argument-decode assertion scoped to arguments because results now
     also decode JSON). All 165 tests, Ruff lint/format, and diff checks passed. No blockers.
+12. Frozen canonical Workspace and instance-bound LocalTools/registries replace the
+    mutable global. Tests inject registries; interleaved reads/writes/search/agent runs
+    stay isolated, and CLI/agent defaults use runtime cwd. All 170 tests, Ruff
+    lint/format, and diff checks passed. No blockers. Step 13 is next.

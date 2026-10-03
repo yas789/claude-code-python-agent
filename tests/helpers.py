@@ -4,9 +4,9 @@ from collections import deque
 from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
 
 from app import main
+from app.workspace import Workspace
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -17,14 +17,11 @@ class WorkspaceTestCase(unittest.TestCase):
         self.workspace = tempfile.TemporaryDirectory()
         self.addCleanup(self.workspace.cleanup)
         self.root = Path(self.workspace.name).resolve()
-        workspace_patch = patch.object(main, "WORKSPACE_ROOT", self.root)
-        workspace_patch.start()
-        self.addCleanup(workspace_patch.stop)
-        # Temporary adapter until tools accept an explicit workspace.
-        self.tools = main
+        self.tools = main.LocalTools(Workspace(self.root))
+        self.registry = main.create_tool_registry(self.tools)
 
     def run_agent(self, *args, **kwargs):
-        return main.run_agent(*args, **kwargs)
+        return main.run_agent(*args, tools=self.registry, **kwargs)
 
 
 class FakeCompletions:

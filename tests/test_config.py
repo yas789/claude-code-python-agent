@@ -85,6 +85,15 @@ class ConfigTests(unittest.TestCase):
 
             self.assertEqual(args.workspace, root)
 
+    def test_parse_args_defaults_to_runtime_cwd(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with (
+                patch("sys.argv", ["agent", "--prompt", "hello"]),
+                patch.object(Path, "cwd", return_value=root),
+            ):
+                self.assertEqual(main.parse_args().workspace, root)
+
     def test_parse_args_rejects_missing_workspace(self):
         with tempfile.TemporaryDirectory() as workspace:
             missing = Path(workspace).resolve() / "missing"
