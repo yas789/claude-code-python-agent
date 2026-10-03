@@ -264,6 +264,57 @@ class AgentLoopTests(WorkspaceTestCase):
 
         self.assertEqual(formatted, "Using read_file with invalid JSON arguments")
 
+    def test_verbose_malformed_calls_return_errors_and_continue(self):
+        invalid_calls = [
+            ("read_file", "{", "invalid JSON arguments"),
+            ("read_file", "[]", "arguments for read_file must be a JSON object"),
+            ("read_file", "null", "arguments for read_file must be a JSON object"),
+            ("read_file", '"text"', "arguments for read_file must be a JSON object"),
+            ("read_file", "{}", "invalid arguments for read_file"),
+            ("read_file", '{"path": "README.md", "extra": 1}', "invalid arguments"),
+            ("missing", "{}", "unknown tool: missing"),
+            ("", "{}", "tool name must be a nonempty string"),
+        ]
+        for name, arguments, error in invalid_calls:
+            with self.subTest(name=name, arguments=arguments):
+                client = FakeClient(
+                    [
+                        assistant_message(
+                            None,
+                            [
+                                tool_call("bad", name, arguments),
+                                tool_call("good", "read_file", '{"path": "README.md"}'),
+                            ],
+                        ),
+                        assistant_message("Recovered"),
+                    ]
+                )
+                stderr = StringIO()
+                with patch("sys.stderr", stderr):
+                    self.assertEqual(
+                        self.run_agent(client, "Read README", verbose=True), "Recovered"
+                    )
+                messages = client.completions.calls[1]["messages"]
+                self.assertIn(f"error: {error}", tool_result(messages, "bad")["content"])
+                self.assertIn("Claude Code Python Agent", tool_result(messages, "good")["content"])
+                self.assertIn(f"Tool result: error: {error}", stderr.getvalue())
+
+    def test_verbose_tool_arguments_are_decoded_once(self):
+        messages = []
+        message = assistant_message(
+            None, [tool_call("call_1", "read_file", '{"path": "README.md"}')]
+        )
+        with (
+            patch("app.registry.json.loads", wraps=json.loads) as decode,
+            patch("sys.stderr", StringIO()),
+        ):
+            main.append_tool_results(messages, message, verbose=True)
+        argument_decodes = [
+            call for call in decode.call_args_list if call.args == ('{"path": "README.md"}',)
+        ]
+        self.assertEqual(len(argument_decodes), 1)
+        self.assertIn("Claude Code Python Agent", tool_result(messages, "call_1")["content"])
+
     def test_summarize_tool_result_reports_line_count(self):
         self.assertEqual(main.summarize_tool_result("one\ntwo"), "ok (2 lines)")
 

@@ -23,8 +23,9 @@ from app.config import (
     MAX_TOOL_CHARS,
     SEARCH_CHUNK_CHARS,
 )
+from app.diagnostics import format_tool_call, summarize_tool_result
 from app.errors import ToolError
-from app.registry import ParsedToolCall, ToolRegistry, parse_tool_call
+from app.registry import ToolRegistry, parse_tool_call
 from app.schemas import TOOLS as TOOL_SCHEMAS
 from app.validation import validate_path, validate_positive_integer, validate_text
 
@@ -334,34 +335,6 @@ def get_message(response):
 
 def execute_tool_call(tool_call):
     return TOOL_REGISTRY.execute(parse_tool_call(tool_call))
-
-
-def summarize_tool_result(result):
-    if result.startswith("error:"):
-        return result
-
-    line_count = len(result.splitlines())
-    if line_count > 1:
-        return f"ok ({line_count} lines)"
-
-    return "ok"
-
-
-def format_tool_call(tool_call):
-    if not isinstance(tool_call, ParsedToolCall):
-        try:
-            tool_call = parse_tool_call(tool_call)
-        except ToolError:
-            name = getattr(getattr(tool_call, "function", None), "name", "unknown tool")
-            return f"Using {name} with invalid JSON arguments"
-
-    formatted_arguments = " ".join(
-        f"{name}={value}" for name, value in sorted(tool_call.arguments.items())
-    )
-    if not formatted_arguments:
-        return f"Using {tool_call.name}"
-
-    return f"Using {tool_call.name} {formatted_arguments}"
 
 
 def append_tool_results(messages, message, verbose=False):
