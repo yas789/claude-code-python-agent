@@ -18,8 +18,8 @@ Every step requires focused tests, formatting/lint checks when available, and
 - [x] 7. Extract consistently named limits/defaults. Verify schemas and tests.
 - [x] 8. Extract validation and explicit errors. Verify invalid-input behavior.
 - [x] 9. Apply shared validation to reads. Verify read boundaries and invalid paths.
-- [~] 10. Centralize registry and argument decoding. Verify malformed calls in verbose mode.
-- [ ] 11. Extract bounded logging and JSON-aware summaries. Verify diagnostics.
+- [x] 10. Centralize registry and argument decoding. Verify malformed calls in verbose mode.
+- [~] 11. Extract bounded logging and JSON-aware summaries. Verify diagnostics.
 - [ ] 12. Introduce explicit workspace context. Verify independent workspaces.
 - [ ] 13. Extract read/list operations. Verify pagination and bounded I/O.
 - [ ] 14. Extract writes and pre-encode edits. Verify failures preserve files.
@@ -41,3 +41,4 @@ Every step requires focused tests, formatting/lint checks when available, and
 7. Static configuration extracted with unchanged values/schemas; 142 tests and quality checks passed.
 8. Typed validators and explicit errors extracted; 150 tests and quality checks passed.
 9. Read validation unified; all 40 focused read/validation tests and quality checks passed.
+10. Registry and single argument decoding verified; 161 tests and quality checks passed.
