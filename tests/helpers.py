@@ -1,20 +1,44 @@
-import sys
+import tempfile
+import unittest
+from collections import deque
+from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
 
-sys.modules["openai"] = SimpleNamespace(OpenAI=object)
+from app import main
+from app.workspace import Workspace
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
+class WorkspaceTestCase(unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.workspace = tempfile.TemporaryDirectory()
+        self.addCleanup(self.workspace.cleanup)
+        self.root = Path(self.workspace.name).resolve()
+        self.tools = main.LocalTools(Workspace(self.root))
+        self.registry = main.create_tool_registry(self.tools)
+
+    def run_agent(self, *args, **kwargs):
+        return main.run_agent(*args, tools=self.registry, **kwargs)
+
+
 class FakeCompletions:
     def __init__(self, messages):
-        self.messages = messages
+        self._responses = deque(messages)
         self.calls = []
 
     def create(self, model, messages, tools):
-        self.calls.append({"model": model, "messages": list(messages), "tools": tools})
-        return SimpleNamespace(choices=[SimpleNamespace(message=self.messages.pop(0))])
+        if not self._responses:
+            raise AssertionError(
+                f"FakeCompletions scripted responses exhausted on call {len(self.calls) + 1} "
+                f"(model={model!r}); add a scripted response for this call"
+            )
+        self.calls.append(
+            {"model": model, "messages": deepcopy(messages), "tools": deepcopy(tools)}
+        )
+        return SimpleNamespace(choices=[SimpleNamespace(message=self._responses.popleft())])
 
 
 class FakeClient:
@@ -25,6 +49,21 @@ class FakeClient:
 
 def fixture_text(name):
     return (FIXTURES / name).read_text().strip()
+
+
+def tool_result(messages, call_id):
+    results = [
+        message
+        for message in messages
+        if isinstance(message, dict)
+        and message.get("role") == "tool"
+        and message.get("tool_call_id") == call_id
+    ]
+    if len(results) != 1:
+        raise AssertionError(
+            f"Expected exactly one tool result for tool_call_id={call_id!r}; found {len(results)}"
+        )
+    return results[0]
 
 
 def assistant_message(content, tool_calls=None):

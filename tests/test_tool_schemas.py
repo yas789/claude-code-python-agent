@@ -1,13 +1,14 @@
 import unittest
 
-from app import main
+from app import config, main
+from tests.helpers import WorkspaceTestCase
 
 
 def tool_schema(name):
     return next(tool for tool in main.TOOLS if tool["function"]["name"] == name)
 
 
-class ToolSchemaTests(unittest.TestCase):
+class ToolSchemaTests(WorkspaceTestCase):
     def test_read_file_tool_is_advertised_to_the_llm(self):
         tool_names = [tool["function"]["name"] for tool in main.TOOLS]
 
@@ -24,17 +25,35 @@ class ToolSchemaTests(unittest.TestCase):
         self.assertEqual(tool["function"]["parameters"]["required"], ["path"])
 
     def test_read_file_tool_has_matching_python_function(self):
-        self.assertIs(main.TOOL_FUNCTIONS["read_file"], main.read_file)
+        self.assertEqual(self.registry.functions["read_file"], self.tools.read_file)
+
+    def test_read_file_ranges_are_optional_positive_integers(self):
+        parameters = tool_schema("read_file")["function"]["parameters"]
+        self.assertEqual(parameters["required"], ["path"])
+        self.assertFalse(parameters["additionalProperties"])
+        for name in ("offset", "limit", "max_chars"):
+            with self.subTest(argument=name):
+                self.assertEqual(parameters["properties"][name]["type"], "integer")
+                self.assertEqual(parameters["properties"][name]["minimum"], 1)
+
+    def test_read_file_schema_budgets_match_runtime(self):
+        properties = tool_schema("read_file")["function"]["parameters"]["properties"]
+        for name, default, maximum in (
+            ("limit", config.DEFAULT_READ_LINES, config.MAX_READ_LINES),
+            ("max_chars", config.DEFAULT_READ_CHARS, config.MAX_READ_CHARS),
+        ):
+            self.assertEqual(properties[name]["default"], default)
+            self.assertEqual(properties[name]["maximum"], maximum)
 
     def test_every_advertised_tool_has_a_python_function(self):
         advertised_tool_names = {tool["function"]["name"] for tool in main.TOOLS}
 
-        self.assertLessEqual(advertised_tool_names, set(main.TOOL_FUNCTIONS))
+        self.assertLessEqual(advertised_tool_names, set(self.registry.functions))
 
     def test_every_python_tool_is_advertised_to_the_llm(self):
         advertised_tool_names = {tool["function"]["name"] for tool in main.TOOLS}
 
-        self.assertLessEqual(set(main.TOOL_FUNCTIONS), advertised_tool_names)
+        self.assertLessEqual(set(self.registry.functions), advertised_tool_names)
 
 
 if __name__ == "__main__":
