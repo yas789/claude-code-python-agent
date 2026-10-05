@@ -9,7 +9,7 @@ from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.styles import Style
 
-COMMANDS = ["/help", "/new", "/model", "/exit"]
+from app.commands import COMMANDS
 
 
 class Input:
@@ -26,7 +26,7 @@ class Input:
 
         self.session = PromptSession(
             history=InMemoryHistory(),
-            completer=WordCompleter(COMMANDS, sentence=True),
+            completer=WordCompleter(list(COMMANDS), sentence=True),
             complete_while_typing=False,
             multiline=True,
             key_bindings=bindings,

@@ -1,5 +1,7 @@
 """Interactive conversation control, separate from rendering and input."""
 
+from app.commands import dispatch
+
 
 def chat(session, terminal, editor):
     while True:
@@ -11,6 +13,10 @@ def chat(session, terminal, editor):
         except KeyboardInterrupt:
             continue
         if not prompt:
+            continue
+        if prompt.startswith("/"):
+            if dispatch(prompt, session, terminal):
+                return 0
             continue
         with terminal.progress() as progress:
             answer = session.turn(prompt, on_event=progress)

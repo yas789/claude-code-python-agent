@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 
 from rich.console import Console
 from rich.markdown import Markdown
+from rich.table import Table
 from rich.text import Text
 
 
@@ -49,6 +50,16 @@ class Terminal:
 
     def progress(self):
         return TurnProgress(self.console)
+
+    def help(self, commands):
+        table = Table(box=None, show_header=False, padding=(0, 2))
+        table.add_column(style="cyan")
+        table.add_column()
+        for name, description in commands.items():
+            table.add_row(Text(name), Text(description))
+        self.console.print(table)
+        self.notice("Enter sends · Alt+Enter adds a newline · Up/Down navigate history")
+        self.notice("Tab completes commands · Ctrl+C cancels/clears · Ctrl+D exits")
 
     def footer(self, model, progress):
         self.console.rule(style="dim")

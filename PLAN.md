@@ -47,9 +47,10 @@ Deliver this branch in at least 15 meaningful, verified commits.
 - [x] 10. Connect the interactive loop to sessions and presentation.
   Verification: two prompts and graceful EOF with a scripted model.
   Result: seven chat/session tests passed; blank input and input Ctrl+C make no requests.
-- [~] 11. Add `/help`, `/new`, `/exit`, and unknown-command handling.
+- [x] 11. Add `/help`, `/new`, `/exit`, and unknown-command handling.
   Verification: command dispatch and context reset tests.
-- [ ] 12. Add model inspection and switching with fresh context.
+  Result: 11 chat/input/rendering tests passed; commands never call the model.
+- [~] 12. Add model inspection and switching with fresh context.
   Verification: model command tests and selected model in subsequent requests.
 - [ ] 13. Show actionable errors and recover from Ctrl+C.
   Verification: connection/model/API failures and cancellation tests.

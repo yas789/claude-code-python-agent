@@ -10,6 +10,28 @@ from tests.helpers import FakeClient, WorkspaceTestCase, assistant_message
 
 
 class ChatTests(WorkspaceTestCase):
+    def test_commands_stay_local_and_new_clears_context(self):
+        client, session, output, terminal, editor = self.setup_chat(
+            [assistant_message("one"), assistant_message("two")],
+            ["first", "/help", "/unknown", "/new", "second", "/exit"],
+        )
+        self.assertEqual(chat(session, terminal, editor), 0)
+        self.assertEqual(len(client.completions.calls), 2)
+        self.assertEqual(
+            client.completions.calls[1]["messages"], [{"role": "user", "content": "second"}]
+        )
+        self.assertIn("Alt+Enter", output.getvalue())
+        self.assertIn("Unknown command", output.getvalue())
+
+    def test_invalid_command_arguments_do_not_reset_session(self):
+        client, session, output, terminal, editor = self.setup_chat(
+            [assistant_message("one")], ["first", "/new unexpected", "/exit"]
+        )
+        chat(session, terminal, editor)
+        self.assertEqual(len(session.messages), 2)
+        self.assertEqual(len(client.completions.calls), 1)
+        self.assertIn("does not accept arguments", output.getvalue())
+
     def setup_chat(self, responses, inputs):
         client = FakeClient(responses)
         session = Session(client, self.registry)
