@@ -1,10 +1,16 @@
 """Installable mlab command."""
 
 import argparse
+import sys
 from pathlib import Path
+from urllib.parse import urlparse
+
+from openai import APIError
+from rich.console import Console
 
 from app.chat import chat
 from app.config import DEFAULT_MAX_TOOL_ROUNDS
+from app.failures import describe_failure
 from app.input import Input
 from app.main import LocalTools, create_tool_registry, run_agent
 from app.session import Session
@@ -32,25 +38,48 @@ def parse_args(argv=None):
         parser.error("--max-tool-rounds must be at least 1")
     if not args.model.strip():
         parser.error("--model must not be empty")
+    try:
+        endpoint = urlparse(args.base_url)
+        valid_url = endpoint.scheme in ("http", "https") and endpoint.hostname
+        endpoint.port
+    except ValueError:
+        valid_url = False
+    if not valid_url:
+        parser.error("--base-url must be a valid HTTP or HTTPS URL")
     if args.prompt is not None and not args.prompt.strip():
         parser.error("--prompt must not be empty")
     return args
 
 
-def main():
-    args = parse_args()
+def main(argv=None):
+    args = parse_args(argv)
     settings = Settings(args.base_url, Settings.from_env().api_key, args.model)
     tools = create_tool_registry(LocalTools(Workspace(args.workspace)))
-    with settings.create_client() as client:
-        if args.prompt is None:
-            terminal = Terminal()
-            terminal.welcome(args.workspace, args.model, args.base_url)
-            return chat(Session(client, tools, args.model, args.max_tool_rounds), terminal, Input())
-        print(
-            run_agent(
-                client, args.prompt, args.verbose, args.max_tool_rounds, args.model, tools=tools
+    try:
+        with settings.create_client() as client:
+            if args.prompt is None:
+                terminal = Terminal()
+                terminal.welcome(args.workspace, args.model, args.base_url)
+                return chat(
+                    Session(client, tools, args.model, args.max_tool_rounds),
+                    terminal,
+                    Input(),
+                    base_url=args.base_url,
+                )
+            print(
+                run_agent(
+                    client, args.prompt, args.verbose, args.max_tool_rounds, args.model, tools=tools
+                )
+                or ""
             )
+    except KeyboardInterrupt:
+        print("Cancelled. Completed file changes remain.", file=sys.stderr)
+        return 130
+    except (APIError, RuntimeError) as error:
+        Terminal(Console(stderr=True, markup=False, highlight=False)).error(
+            describe_failure(error, args.base_url, args.model)
         )
+        return 1
     return 0
 
 

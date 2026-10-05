@@ -1,5 +1,5 @@
 from io import StringIO
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from rich.console import Console
 
@@ -10,6 +10,19 @@ from tests.helpers import FakeClient, WorkspaceTestCase, assistant_message
 
 
 class ChatTests(WorkspaceTestCase):
+    def test_turn_failure_and_cancellation_allow_another_prompt(self):
+        _, session, output, terminal, editor = self.setup_chat(
+            [], ["first", "second", "third", "/exit"]
+        )
+        with patch.object(
+            session,
+            "turn",
+            side_effect=[RuntimeError("budget exhausted"), KeyboardInterrupt(), "Recovered"],
+        ):
+            self.assertEqual(chat(session, terminal, editor), 0)
+        for expected in ("budget exhausted", "Cancelled", "Recovered"):
+            self.assertIn(expected, output.getvalue())
+
     def test_model_switch_changes_requests_and_clears_context(self):
         client, session, output, terminal, editor = self.setup_chat(
             [assistant_message("one"), assistant_message("two")],

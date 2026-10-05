@@ -53,9 +53,11 @@ Deliver this branch in at least 15 meaningful, verified commits.
 - [x] 12. Add model inspection and switching with fresh context.
   Verification: model command tests and selected model in subsequent requests.
   Result: ten chat/input tests passed; invalid/same model preserves context.
-- [~] 13. Show actionable errors and recover from Ctrl+C.
+- [x] 13. Show actionable errors and recover from Ctrl+C.
   Verification: connection/model/API failures and cancellation tests.
-- [ ] 14. Keep one-shot and non-TTY output predictable.
+  Result: 20 focused tests passed; bounded timeout, actionable provider errors,
+  cancellation recovery, and one-shot exit codes verified.
+- [~] 14. Keep one-shot and non-TTY output predictable.
   Verification: redirected output, quiet/verbose flags, and non-TTY startup tests.
 - [ ] 15. Install `mlab` and verify a live Granite follow-up from another directory.
   Verification: editable tool installation, actual file tool, and remembered follow-up.
