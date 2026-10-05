@@ -8,6 +8,10 @@
 
 set -e # Exit early if any commands fail
 
+# Default local runs to Ollama. Explicit environment values take precedence.
+export OPENROUTER_BASE_URL="${OPENROUTER_BASE_URL:-http://localhost:11434/v1}"
+export OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-ollama}"
+
 # Copied from .codecrafters/run.sh
 #
 # - Edit this to change how your program runs locally
@@ -17,4 +21,5 @@ PYTHONSAFEPATH=1 PYTHONPATH="$SCRIPT_DIR" exec uv run \
   --project "$SCRIPT_DIR" \
   --quiet \
   -m app.main \
+  --model granite3.3:2b \
   "$@"
