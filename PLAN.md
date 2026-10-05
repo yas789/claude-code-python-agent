@@ -18,9 +18,11 @@ Deliver this branch in at least 15 meaningful, verified commits.
 - [x] 1. Record the delivery plan and verify the baseline.
   Verification: `uv run --locked python -m unittest discover -s tests -p 'test_*.py'`.
   Result: 170 tests passed.
-- [ ] 2. Package an installable `mlab` console command.
+- [x] 2. Package an installable `mlab` console command.
   Verification: build/install entry point and `uv run mlab --help`.
-- [ ] 3. Add local-first runtime configuration and one-shot arguments.
+  Result: editable project built; entry point help and Ruff passed. Previous
+  clean-code checklist archived in `CLEAN_CODE_PLAN.md`.
+- [~] 3. Add local-first runtime configuration and one-shot arguments.
   Verification: configuration tests, including overrides and workspace validation.
 - [ ] 4. Retain complete conversation history across successful turns.
   Verification: scripted follow-up includes prior answer and tool results.
