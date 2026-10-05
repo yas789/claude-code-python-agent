@@ -20,12 +20,43 @@ class Session:
         self.messages.clear()
 
     def turn(self, prompt, **kwargs):
-        return run_agent(
-            self.client,
-            prompt,
-            max_tool_rounds=self.max_tool_rounds,
-            model=self.model,
-            tools=self.tools,
-            messages=self.messages,
-            **kwargs,
+        start = len(self.messages)
+        try:
+            return run_agent(
+                self.client,
+                prompt,
+                max_tool_rounds=self.max_tool_rounds,
+                model=self.model,
+                tools=self.tools,
+                messages=self.messages,
+                **kwargs,
+            )
+        except Exception, KeyboardInterrupt:
+            self._close_failed_turn(start)
+            raise
+
+    def _close_failed_turn(self, start):
+        """Preserve completed work and close any unanswered tool calls."""
+        turn = self.messages[start:]
+        answered = {
+            message["tool_call_id"]
+            for message in turn
+            if isinstance(message, dict) and message.get("role") == "tool"
+        }
+        for message in turn:
+            for call in getattr(message, "tool_calls", None) or []:
+                if call.id not in answered:
+                    self.messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": call.id,
+                            "content": "error: turn interrupted; tool completion is unknown",
+                        }
+                    )
+        self.messages.append(
+            {
+                "role": "assistant",
+                "content": "This turn stopped before completion. Completed file changes remain; "
+                "inspect the workspace before retrying changes.",
+            }
         )

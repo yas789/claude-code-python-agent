@@ -28,9 +28,11 @@ Deliver this branch in at least 15 meaningful, verified commits.
 - [x] 4. Retain complete conversation history across successful turns.
   Verification: scripted follow-up includes prior answer and tool results.
   Result: 20 session/agent tests and Ruff passed; existing loop reused.
-- [~] 5. Recover session history after failed or interrupted turns.
+- [x] 5. Recover session history after failed or interrupted turns.
   Verification: API failure, interrupted tools, and budget-exhaustion tests.
-- [ ] 6. Emit bounded model/tool progress events independently of presentation.
+  Result: five session tests passed; completed receipts retained and pending tool
+  calls closed before retry. Ruff and diff checks passed.
+- [~] 6. Emit bounded model/tool progress events independently of presentation.
   Verification: event order and tool-error tests plus existing agent tests.
 - [ ] 7. Render welcome, Markdown answers, and concise metadata.
   Verification: narrow-terminal and plain-output rendering checks.
