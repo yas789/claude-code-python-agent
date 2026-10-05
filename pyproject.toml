@@ -5,6 +5,7 @@ requires-python = ">=3.14"
 dependencies = [
     "openai>=2.15.0",
     "rich>=14,<15",
+    "prompt-toolkit>=3.0.50,<4",
 ]
 
 [project.scripts]
