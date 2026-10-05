@@ -22,9 +22,10 @@ Deliver this branch in at least 15 meaningful, verified commits.
   Verification: build/install entry point and `uv run mlab --help`.
   Result: editable project built; entry point help and Ruff passed. Previous
   clean-code checklist archived in `CLEAN_CODE_PLAN.md`.
-- [~] 3. Add local-first runtime configuration and one-shot arguments.
+- [x] 3. Add local-first runtime configuration and one-shot arguments.
   Verification: configuration tests, including overrides and workspace validation.
-- [ ] 4. Retain complete conversation history across successful turns.
+  Result: four configuration tests, Ruff, and diff checks passed.
+- [~] 4. Retain complete conversation history across successful turns.
   Verification: scripted follow-up includes prior answer and tool results.
 - [ ] 5. Recover session history after failed or interrupted turns.
   Verification: API failure, interrupted tools, and budget-exhaustion tests.
