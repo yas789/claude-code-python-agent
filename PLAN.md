@@ -32,9 +32,10 @@ Deliver this branch in at least 15 meaningful, verified commits.
   Verification: API failure, interrupted tools, and budget-exhaustion tests.
   Result: five session tests passed; completed receipts retained and pending tool
   calls closed before retry. Ruff and diff checks passed.
-- [~] 6. Emit bounded model/tool progress events independently of presentation.
+- [x] 6. Emit bounded model/tool progress events independently of presentation.
   Verification: event order and tool-error tests plus existing agent tests.
-- [ ] 7. Render welcome, Markdown answers, and concise metadata.
+  Result: 25 focused tests passed; progress hides write content and reports errors.
+- [~] 7. Render welcome, Markdown answers, and concise metadata.
   Verification: narrow-terminal and plain-output rendering checks.
 - [ ] 8. Display a spinner, tool progress, and turn statistics.
   Verification: captured progress output and success/error counts.

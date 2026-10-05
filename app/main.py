@@ -25,6 +25,7 @@ from app.config import (
 )
 from app.diagnostics import format_tool_call, summarize_tool_result
 from app.errors import ToolError
+from app.events import ProgressCallback, ProgressEvent
 from app.registry import ToolRegistry, parse_tool_call
 from app.schemas import TOOLS as TOOL_SCHEMAS
 from app.validation import validate_path, validate_positive_integer, validate_text
@@ -338,9 +339,18 @@ def execute_tool_call(tool_call, *, tools: ToolRegistry):
     return tools.execute(parse_tool_call(tool_call))
 
 
-def append_tool_results(messages, message, verbose=False, *, tools: ToolRegistry):
+def append_tool_results(
+    messages,
+    message,
+    verbose=False,
+    *,
+    tools: ToolRegistry,
+    on_event: ProgressCallback | None = None,
+):
     messages.append(message)
     for tool_call in message.tool_calls or []:
+        if on_event:
+            on_event(ProgressEvent("tool_start", format_tool_call(tool_call)))
         try:
             parsed = parse_tool_call(tool_call)
             if verbose:
@@ -359,6 +369,12 @@ def append_tool_results(messages, message, verbose=False, *, tools: ToolRegistry
                 "content": result,
             }
         )
+        if on_event:
+            on_event(
+                ProgressEvent(
+                    "tool_end", summarize_tool_result(result), failed=result.startswith("error:")
+                )
+            )
 
 
 def run_agent(
@@ -370,6 +386,7 @@ def run_agent(
     *,
     tools: ToolRegistry | None = None,
     messages: list | None = None,
+    on_event: ProgressCallback | None = None,
 ):
     if tools is None:
         tools = create_tool_registry(LocalTools(Workspace(Path.cwd())))
@@ -378,6 +395,8 @@ def run_agent(
     messages.append({"role": "user", "content": prompt})
 
     for _ in range(max_tool_rounds):
+        if on_event:
+            on_event(ProgressEvent("request"))
         response = create_chat_completion(client, messages, model, tools=tools)
         message = get_message(response)
         tool_calls = getattr(message, "tool_calls", None) or []
@@ -386,7 +405,7 @@ def run_agent(
             messages.append({"role": "assistant", "content": message.content or ""})
             return message.content
 
-        append_tool_results(messages, message, verbose, tools=tools)
+        append_tool_results(messages, message, verbose, tools=tools, on_event=on_event)
 
     raise RuntimeError("exceeded maximum tool call rounds")
 
