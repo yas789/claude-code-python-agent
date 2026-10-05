@@ -1,51 +1,65 @@
-# Clean Code: 20 Verified Commits
+# mlab terminal experience
 
-Baseline: `1b7c116`, 136 passing tests. Previous plans are preserved in
-`FILE_READ_PLAN.md` and `WORKSPACE_TOOLS_PLAN.md`.
+## Goal
 
-Goal: isolate responsibilities and dependencies, fix confirmed defects, preserve
-the five JSON tool contracts, and enforce documented Python standards.
+Launch `mlab` from any project for an attractive, scrollable conversation with
+local Ollama (`granite3.3:2b`). Preserve the existing one-shot agent and tools.
+Deliver this branch in at least 15 meaningful, verified commits.
 
-Every step requires focused tests, formatting/lint checks when available, and
-`git diff --check`. Update the result before proceeding; do not skip failures.
+## Starting state
 
-- [x] 1. Record standards and this plan. Verify the baseline suite.
-- [x] 2. Configure Ruff and normalize formatting/imports. Verify lint and tests.
-- [x] 3. Use installed dependencies and remove global SDK stubs. Verify independent imports.
-- [x] 4. Isolate filesystem tests with shared temporary-workspace setup. Verify tests.
-- [x] 5. Stabilize fake clients and add call-ID lookup. Verify helper regressions.
-- [x] 6. Make contracts unconditional and assert CLI exit codes. Verify focused tests.
-- [x] 7. Extract consistently named limits/defaults. Verify schemas and tests.
-- [x] 8. Extract validation and explicit errors. Verify invalid-input behavior.
-- [x] 9. Apply shared validation to reads. Verify read boundaries and invalid paths.
-- [x] 10. Centralize registry and argument decoding. Verify malformed calls in verbose mode.
-- [x] 11. Extract bounded logging and JSON-aware summaries. Verify diagnostics.
-- [x] 12. Introduce explicit workspace context. Verify independent workspaces.
-- [~] 13. Extract read/list operations. Verify pagination and bounded I/O.
-- [ ] 14. Extract writes and pre-encode edits. Verify failures preserve files.
-- [ ] 15. Extract search and deterministic iterator cleanup. Verify search contracts.
-- [ ] 16. Isolate provider and runtime configuration. Verify environment changes.
-- [ ] 17. Extract agent orchestration and clear error boundaries. Verify recovery.
-- [ ] 18. Make CLI thin with expected-failure handling. Verify exit codes and output.
-- [ ] 19. Correct launcher roots. Verify launchers outside the checkout.
-- [ ] 20. Enforce CI standards and finish audit/docs. Verify all checks and 20 commits.
+- Branch: `feature/local-ollama`; clean working tree.
+- Existing launcher defaults to Ollama Granite; the Python CLI is one-shot.
+- Baseline: 170 unittest tests pass.
+- No terminal rendering or editable-input dependencies yet.
 
-## Verification record
+## Checklist
 
-1. Baseline: 136 tests and diff checks passed. No blockers.
-2. Locked Ruff installed; formatting, lint, all 136 tests, and diff checks passed.
-3. Independent schema/config imports and all 136 tests passed; lint/format/diff clean.
-4. Shared temporary fixtures isolate filesystem inputs; all 136 tests and quality checks passed.
-5. Stable fake snapshots and call-ID lookup verified; 142 tests and quality checks passed.
-6. All 16 focused CLI/contract tests and quality checks passed; no implemented-tool skips remain.
-7. Static configuration extracted with unchanged values/schemas; 142 tests and quality checks passed.
-8. Typed validators and explicit errors extracted; 150 tests and quality checks passed.
-9. Read validation unified; all 40 focused read/validation tests and quality checks passed.
-10. Registry and single argument decoding verified; 161 tests and quality checks passed.
-11. Bounded diagnostics and JSON counts/ranges/truncation verified; preserved step 10
-    regression tests (argument-decode assertion scoped to arguments because results now
-    also decode JSON). All 165 tests, Ruff lint/format, and diff checks passed. No blockers.
-12. Frozen canonical Workspace and instance-bound LocalTools/registries replace the
-    mutable global. Tests inject registries; interleaved reads/writes/search/agent runs
-    stay isolated, and CLI/agent defaults use runtime cwd. All 170 tests, Ruff
-    lint/format, and diff checks passed. No blockers. Step 13 is next.
+- [x] 1. Record the delivery plan and verify the baseline.
+  Verification: `uv run --locked python -m unittest discover -s tests -p 'test_*.py'`.
+  Result: 170 tests passed.
+- [ ] 2. Package an installable `mlab` console command.
+  Verification: build/install entry point and `uv run mlab --help`.
+- [ ] 3. Add local-first runtime configuration and one-shot arguments.
+  Verification: configuration tests, including overrides and workspace validation.
+- [ ] 4. Retain complete conversation history across successful turns.
+  Verification: scripted follow-up includes prior answer and tool results.
+- [ ] 5. Recover session history after failed or interrupted turns.
+  Verification: API failure, interrupted tools, and budget-exhaustion tests.
+- [ ] 6. Emit bounded model/tool progress events independently of presentation.
+  Verification: event order and tool-error tests plus existing agent tests.
+- [ ] 7. Render welcome, Markdown answers, and concise metadata.
+  Verification: narrow-terminal and plain-output rendering checks.
+- [ ] 8. Display a spinner, tool progress, and turn statistics.
+  Verification: captured progress output and success/error counts.
+- [ ] 9. Add editable input, history, multiline entry, and command completion.
+  Verification: prompt-toolkit pipe input tests and keyboard bindings.
+- [ ] 10. Connect the interactive loop to sessions and presentation.
+  Verification: two prompts and graceful EOF with a scripted model.
+- [ ] 11. Add `/help`, `/new`, `/exit`, and unknown-command handling.
+  Verification: command dispatch and context reset tests.
+- [ ] 12. Add model inspection and switching with fresh context.
+  Verification: model command tests and selected model in subsequent requests.
+- [ ] 13. Show actionable errors and recover from Ctrl+C.
+  Verification: connection/model/API failures and cancellation tests.
+- [ ] 14. Keep one-shot and non-TTY output predictable.
+  Verification: redirected output, quiet/verbose flags, and non-TTY startup tests.
+- [ ] 15. Install `mlab` and verify a live Granite follow-up from another directory.
+  Verification: editable tool installation, actual file tool, and remembered follow-up.
+- [ ] 16. Document installation, appearance, controls, and extension points.
+  Verification: full unittest suite, Ruff, package build, and final branch review.
+
+## Design
+
+- Small cyan `mlab` heading; muted workspace/model metadata; Markdown responses.
+- Append-only transcript with native terminal scrollback, compact tool receipts.
+- Rich for rendering and status; prompt_toolkit for input and completion.
+- Enter sends; Alt+Enter inserts a newline; Ctrl+C cancels/clears; Ctrl+D exits.
+- Sessions remain in memory. Future skills can use slash-command dispatch and
+  progress events; streaming and persistence are later features.
+- Introduce modules only as the corresponding layer needs them.
+
+## Verification notes
+
+Live model checks are opt-in; automated tests use scripted clients. Each step
+is verified before proceeding. Cancellation does not undo completed file edits.
