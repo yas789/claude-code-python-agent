@@ -5,6 +5,14 @@ from tests.helpers import FakeClient, WorkspaceTestCase, assistant_message, tool
 
 
 class SessionTests(WorkspaceTestCase):
+    def test_empty_answer_is_recoverable_and_generation_is_deterministic(self):
+        client = FakeClient([assistant_message(""), assistant_message("Recovered")])
+        session = Session(client, self.registry)
+        with self.assertRaisesRegex(RuntimeError, "empty answer"):
+            session.turn("first")
+        self.assertEqual(session.turn("try again"), "Recovered")
+        self.assertEqual(client.completions.calls[0]["temperature"], 0)
+
     def test_failed_request_retains_valid_history_for_retry(self):
         client = FakeClient([assistant_message("Recovered")])
         session = Session(client, self.registry)

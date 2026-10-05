@@ -61,9 +61,12 @@ Deliver this branch in at least 15 meaningful, verified commits.
   Verification: redirected output, quiet/verbose flags, and non-TTY startup tests.
   Result: 11 CLI/rendering/error tests passed; plain stdout, verbose stderr,
   quiet presentation, and early non-TTY guidance verified.
-- [~] 15. Install `mlab` and verify a live Granite follow-up from another directory.
+- [x] 15. Install `mlab` and verify a live Granite follow-up from another directory.
   Verification: editable tool installation, actual file tool, and remembered follow-up.
-- [ ] 16. Document installation, appearance, controls, and extension points.
+  Result: installed `~/.local/bin/mlab`; real Granite file read and remembered
+  follow-up passed with temperature 0. Four CLI tests include actual PTY startup,
+  /help and /exit from another directory. OpenAI SDK bounded to tested major 2.
+- [~] 16. Document installation, appearance, controls, and extension points.
   Verification: full unittest suite, Ruff, package build, and final branch review.
 
 ## Design
@@ -80,3 +83,10 @@ Deliver this branch in at least 15 meaningful, verified commits.
 
 Live model checks are opt-in; automated tests use scripted clients. Each step
 is verified before proceeding. Cancellation does not undo completed file edits.
+
+Step 15 investigation: Granite intermittently returned empty follow-up answers;
+Qwen was tried at the user's request but emitted tool JSON as ordinary text.
+Retain Granite unless Qwen passes actual tool execution. Verify deterministic
+generation and report empty answers as recoverable failures before completing.
+Resolved: deterministic Granite generation passed the live check. Qwen did not
+pass native tool execution, so the default remains Granite.

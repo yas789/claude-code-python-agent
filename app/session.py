@@ -22,15 +22,19 @@ class Session:
     def turn(self, prompt, **kwargs):
         start = len(self.messages)
         try:
-            return run_agent(
+            answer = run_agent(
                 self.client,
                 prompt,
                 max_tool_rounds=self.max_tool_rounds,
                 model=self.model,
                 tools=self.tools,
                 messages=self.messages,
+                temperature=0,
                 **kwargs,
             )
+            if not answer or not answer.strip():
+                raise RuntimeError("The model returned an empty answer. Try again or use /new.")
+            return answer
         except Exception, KeyboardInterrupt:
             self._close_failed_turn(start)
             raise

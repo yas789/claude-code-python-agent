@@ -320,11 +320,15 @@ def create_client():
     return OpenAI(api_key=api_key, base_url=BASE_URL)
 
 
-def create_chat_completion(client, messages, model=DEFAULT_MODEL, *, tools: ToolRegistry):
+def create_chat_completion(
+    client, messages, model=DEFAULT_MODEL, *, tools: ToolRegistry, temperature=None
+):
+    options = {} if temperature is None else {"temperature": temperature}
     return client.chat.completions.create(
         model=model,
         messages=messages,
         tools=tools.schemas,
+        **options,
     )
 
 
@@ -387,6 +391,7 @@ def run_agent(
     tools: ToolRegistry | None = None,
     messages: list | None = None,
     on_event: ProgressCallback | None = None,
+    temperature=None,
 ):
     if tools is None:
         tools = create_tool_registry(LocalTools(Workspace(Path.cwd())))
@@ -397,7 +402,8 @@ def run_agent(
     for _ in range(max_tool_rounds):
         if on_event:
             on_event(ProgressEvent("request"))
-        response = create_chat_completion(client, messages, model, tools=tools)
+        options = {} if temperature is None else {"temperature": temperature}
+        response = create_chat_completion(client, messages, model, tools=tools, **options)
         message = get_message(response)
         tool_calls = getattr(message, "tool_calls", None) or []
 

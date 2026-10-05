@@ -49,7 +49,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "openai", specifier = ">=2.15.0" },
+    { name = "openai", specifier = ">=2.15.0,<3" },
     { name = "prompt-toolkit", specifier = ">=3.0.50,<4" },
     { name = "rich", specifier = ">=14,<15" },
 ]

@@ -29,14 +29,14 @@ class FakeCompletions:
         self._responses = deque(messages)
         self.calls = []
 
-    def create(self, model, messages, tools):
+    def create(self, model, messages, tools, **options):
         if not self._responses:
             raise AssertionError(
                 f"FakeCompletions scripted responses exhausted on call {len(self.calls) + 1} "
                 f"(model={model!r}); add a scripted response for this call"
             )
         self.calls.append(
-            {"model": model, "messages": deepcopy(messages), "tools": deepcopy(tools)}
+            {"model": model, "messages": deepcopy(messages), "tools": deepcopy(tools), **options}
         )
         return SimpleNamespace(choices=[SimpleNamespace(message=self._responses.popleft())])
 

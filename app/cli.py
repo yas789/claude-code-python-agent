@@ -79,6 +79,7 @@ def main(argv=None):
                         model=args.model,
                         tools=tools,
                         on_event=progress,
+                        temperature=0,
                     )
                 terminal.answer(answer)
                 terminal.footer(args.model, progress)
@@ -91,6 +92,7 @@ def main(argv=None):
                         args.max_tool_rounds,
                         args.model,
                         tools=tools,
+                        temperature=0,
                     )
                     or ""
                 )
