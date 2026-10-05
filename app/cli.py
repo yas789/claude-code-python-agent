@@ -3,9 +3,13 @@
 import argparse
 from pathlib import Path
 
+from app.chat import chat
 from app.config import DEFAULT_MAX_TOOL_ROUNDS
+from app.input import Input
 from app.main import LocalTools, create_tool_registry, run_agent
+from app.session import Session
 from app.settings import Settings
+from app.terminal import Terminal
 from app.workspace import Workspace
 
 
@@ -35,17 +39,20 @@ def parse_args(argv=None):
 
 def main():
     args = parse_args()
-    if args.prompt is None:
-        raise SystemExit("Interactive mode is coming next; use --prompt for now.")
     settings = Settings(args.base_url, Settings.from_env().api_key, args.model)
     tools = create_tool_registry(LocalTools(Workspace(args.workspace)))
     with settings.create_client() as client:
+        if args.prompt is None:
+            terminal = Terminal()
+            terminal.welcome(args.workspace, args.model, args.base_url)
+            return chat(Session(client, tools, args.model, args.max_tool_rounds), terminal, Input())
         print(
             run_agent(
                 client, args.prompt, args.verbose, args.max_tool_rounds, args.model, tools=tools
             )
         )
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

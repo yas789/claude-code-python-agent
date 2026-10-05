@@ -44,9 +44,10 @@ Deliver this branch in at least 15 meaningful, verified commits.
 - [x] 9. Add editable input, history, multiline entry, and command completion.
   Verification: prompt-toolkit pipe input tests and keyboard bindings.
   Result: four real pipe-input tests passed (including asynchronous completion).
-- [~] 10. Connect the interactive loop to sessions and presentation.
+- [x] 10. Connect the interactive loop to sessions and presentation.
   Verification: two prompts and graceful EOF with a scripted model.
-- [ ] 11. Add `/help`, `/new`, `/exit`, and unknown-command handling.
+  Result: seven chat/session tests passed; blank input and input Ctrl+C make no requests.
+- [~] 11. Add `/help`, `/new`, `/exit`, and unknown-command handling.
   Verification: command dispatch and context reset tests.
 - [ ] 12. Add model inspection and switching with fresh context.
   Verification: model command tests and selected model in subsequent requests.
