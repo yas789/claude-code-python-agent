@@ -369,10 +369,13 @@ def run_agent(
     model=DEFAULT_MODEL,
     *,
     tools: ToolRegistry | None = None,
+    messages: list | None = None,
 ):
     if tools is None:
         tools = create_tool_registry(LocalTools(Workspace(Path.cwd())))
-    messages = [{"role": "user", "content": prompt}]
+    if messages is None:
+        messages = []
+    messages.append({"role": "user", "content": prompt})
 
     for _ in range(max_tool_rounds):
         response = create_chat_completion(client, messages, model, tools=tools)
@@ -380,6 +383,7 @@ def run_agent(
         tool_calls = getattr(message, "tool_calls", None) or []
 
         if not tool_calls:
+            messages.append({"role": "assistant", "content": message.content or ""})
             return message.content
 
         append_tool_results(messages, message, verbose, tools=tools)

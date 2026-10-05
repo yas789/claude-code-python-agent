@@ -25,9 +25,10 @@ Deliver this branch in at least 15 meaningful, verified commits.
 - [x] 3. Add local-first runtime configuration and one-shot arguments.
   Verification: configuration tests, including overrides and workspace validation.
   Result: four configuration tests, Ruff, and diff checks passed.
-- [~] 4. Retain complete conversation history across successful turns.
+- [x] 4. Retain complete conversation history across successful turns.
   Verification: scripted follow-up includes prior answer and tool results.
-- [ ] 5. Recover session history after failed or interrupted turns.
+  Result: 20 session/agent tests and Ruff passed; existing loop reused.
+- [~] 5. Recover session history after failed or interrupted turns.
   Verification: API failure, interrupted tools, and budget-exhaustion tests.
 - [ ] 6. Emit bounded model/tool progress events independently of presentation.
   Verification: event order and tool-error tests plus existing agent tests.
