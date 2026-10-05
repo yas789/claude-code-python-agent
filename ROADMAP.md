@@ -15,8 +15,10 @@ investment in interactive sessions and larger-repository support.
 
 `app/main.py` currently contains the CLI, OpenAI-compatible API integration,
 tool schemas and implementations, workspace path checks, and agent loop.
-The agent processes one prompt and executes tool calls sequentially until the
-model returns an answer or the request limit is reached.
+The original entry point processes one prompt and executes tools sequentially.
+The installable `mlab` entry point adds an in-memory session, local Ollama defaults,
+editable interactive input, Markdown output, progress events, slash commands, and
+recoverable provider errors. See [TERMINAL_DESIGN.md](TERMINAL_DESIGN.md).
 
 Available tools are `read_file`, `list_files`, `edit_file`, `create_file`, and
 `search_files`. File reads support bounded line ranges; listing and search
@@ -91,11 +93,13 @@ limits without losing essential task or verification evidence.
 
 ## Milestone 5: Interactive Experience
 
-- [ ] Stream responses and display concise tool progress.
-- [ ] Support interactive follow-up conversations.
+- [ ] Stream responses.
+- [x] Display concise tool progress in mlab.
+- [x] Support interactive follow-up conversations in mlab.
 - [ ] Save and resume sessions.
 - [ ] Summarize changed files, checks run, and unresolved issues at completion.
-- [ ] Define meaningful `--quiet` behavior and add structured output for scripts.
+- [x] Define meaningful `--quiet` behavior and plain one-shot output in mlab.
+- [ ] Add structured output for scripts.
 
 **Success criteria:** users can follow progress, continue a task, resume a
 session, and consume predictable output interactively or from scripts.

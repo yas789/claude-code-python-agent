@@ -81,21 +81,23 @@ def main(argv=None):
                         on_event=progress,
                         temperature=0,
                     )
+                if not answer or not answer.strip():
+                    raise RuntimeError("The model returned an empty answer. Try again.")
                 terminal.answer(answer)
                 terminal.footer(args.model, progress)
             else:
-                print(
-                    run_agent(
-                        client,
-                        args.prompt,
-                        args.verbose,
-                        args.max_tool_rounds,
-                        args.model,
-                        tools=tools,
-                        temperature=0,
-                    )
-                    or ""
+                answer = run_agent(
+                    client,
+                    args.prompt,
+                    args.verbose,
+                    args.max_tool_rounds,
+                    args.model,
+                    tools=tools,
+                    temperature=0,
                 )
+                if not answer or not answer.strip():
+                    raise RuntimeError("The model returned an empty answer. Try again.")
+                print(answer)
     except KeyboardInterrupt:
         print("Cancelled. Completed file changes remain.", file=sys.stderr)
         return 130

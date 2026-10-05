@@ -13,6 +13,16 @@ from tests.helpers import FakeClient, WorkspaceTestCase, assistant_message, tool
 
 
 class MlabCliTests(WorkspaceTestCase):
+    def test_empty_one_shot_answer_is_an_error(self):
+        with (
+            patch("app.cli.run_agent", return_value=""),
+            redirect_stdout(StringIO()) as stdout,
+            redirect_stderr(StringIO()) as stderr,
+        ):
+            self.assertEqual(main(["--prompt", "hello"]), 1)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("empty answer", stderr.getvalue())
+
     def test_real_terminal_opens_help_and_exits_without_model_request(self):
         master, slave = pty.openpty()
         process = subprocess.Popen(

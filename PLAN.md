@@ -66,8 +66,11 @@ Deliver this branch in at least 15 meaningful, verified commits.
   Result: installed `~/.local/bin/mlab`; real Granite file read and remembered
   follow-up passed with temperature 0. Four CLI tests include actual PTY startup,
   /help and /exit from another directory. OpenAI SDK bounded to tested major 2.
-- [~] 16. Document installation, appearance, controls, and extension points.
+- [x] 16. Document installation, appearance, controls, and extension points.
   Verification: full unittest suite, Ruff, package build, and final branch review.
+  Result: 206 tests passed; Ruff lint/format and diff checks clean; sdist and
+  wheel built. README/design/roadmap updated. Final audit extended empty-answer
+  error handling to one-shot mode and disabled input colors with NO_COLOR.
 
 ## Design
 

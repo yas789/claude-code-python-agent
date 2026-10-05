@@ -14,7 +14,7 @@ Every step requires focused tests, formatting/lint checks when available, and
 - [x] 3. Use installed dependencies and remove global SDK stubs. Verify independent imports.
 - [x] 4. Isolate filesystem tests with shared temporary-workspace setup. Verify tests.
 - [x] 5. Stabilize fake clients and add call-ID lookup. Verify helper regressions.
-- [x] 6. Make contracts unconditional and assert CLI exit codes. Verify exit codes and output.
+- [x] 6. Make contracts unconditional and assert CLI exit codes. Verify focused tests.
 - [x] 7. Extract consistently named limits/defaults. Verify schemas and tests.
 - [x] 8. Extract validation and explicit errors. Verify invalid-input behavior.
 - [x] 9. Apply shared validation to reads. Verify read boundaries and invalid paths.
