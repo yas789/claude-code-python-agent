@@ -10,6 +10,28 @@ from tests.helpers import FakeClient, WorkspaceTestCase, assistant_message
 
 
 class ChatTests(WorkspaceTestCase):
+    def test_model_switch_changes_requests_and_clears_context(self):
+        client, session, output, terminal, editor = self.setup_chat(
+            [assistant_message("one"), assistant_message("two")],
+            ["first", "/model", "/model qwen2.5-coder:3b", "second", "/exit"],
+        )
+        chat(session, terminal, editor)
+        self.assertIn("Current model: granite3.3:2b", output.getvalue())
+        self.assertEqual(client.completions.calls[1]["model"], "qwen2.5-coder:3b")
+        self.assertEqual(
+            client.completions.calls[1]["messages"], [{"role": "user", "content": "second"}]
+        )
+
+    def test_same_or_invalid_model_retains_context(self):
+        _, session, output, terminal, editor = self.setup_chat(
+            [assistant_message("one")],
+            ["first", "/model granite3.3:2b", "/model too many names", "/exit"],
+        )
+        chat(session, terminal, editor)
+        self.assertEqual(len(session.messages), 2)
+        self.assertEqual(session.model, "granite3.3:2b")
+        self.assertIn("single model name", output.getvalue())
+
     def test_commands_stay_local_and_new_clears_context(self):
         client, session, output, terminal, editor = self.setup_chat(
             [assistant_message("one"), assistant_message("two")],

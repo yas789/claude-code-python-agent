@@ -50,9 +50,10 @@ Deliver this branch in at least 15 meaningful, verified commits.
 - [x] 11. Add `/help`, `/new`, `/exit`, and unknown-command handling.
   Verification: command dispatch and context reset tests.
   Result: 11 chat/input/rendering tests passed; commands never call the model.
-- [~] 12. Add model inspection and switching with fresh context.
+- [x] 12. Add model inspection and switching with fresh context.
   Verification: model command tests and selected model in subsequent requests.
-- [ ] 13. Show actionable errors and recover from Ctrl+C.
+  Result: ten chat/input tests passed; invalid/same model preserves context.
+- [~] 13. Show actionable errors and recover from Ctrl+C.
   Verification: connection/model/API failures and cancellation tests.
 - [ ] 14. Keep one-shot and non-TTY output predictable.
   Verification: redirected output, quiet/verbose flags, and non-TTY startup tests.
