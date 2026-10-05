@@ -16,10 +16,13 @@ def clean_text(value):
 
 
 class Terminal:
-    def __init__(self, console=None):
+    def __init__(self, console=None, *, quiet=False):
         self.console = console or Console(highlight=False, markup=False, emoji=False)
+        self.quiet = quiet
 
     def welcome(self, workspace, model, base_url):
+        if self.quiet:
+            return
         root = Path(workspace)
         try:
             path = "~/" + str(root.relative_to(Path.home()))
@@ -38,6 +41,9 @@ class Terminal:
         self.console.print()
 
     def answer(self, content):
+        if self.quiet:
+            self.console.print(clean_text(content or ""), soft_wrap=True)
+            return
         self.console.print(Text("mlab", style="bold cyan"))
         self.console.print(Markdown(clean_text(content or "(No text response.)")))
         self.console.print()
@@ -49,7 +55,7 @@ class Terminal:
         self.console.print(Text(clean_text(message), style="red"))
 
     def progress(self):
-        return TurnProgress(self.console)
+        return TurnProgress(self.console, quiet=self.quiet)
 
     def help(self, commands):
         table = Table(box=None, show_header=False, padding=(0, 2))
@@ -62,6 +68,8 @@ class Terminal:
         self.notice("Tab completes commands · Ctrl+C cancels/clears · Ctrl+D exits")
 
     def footer(self, model, progress):
+        if self.quiet:
+            return
         self.console.rule(style="dim")
         self.notice(
             f"{model} · {progress.tools} tools · {progress.failures} errors · "
@@ -71,8 +79,9 @@ class Terminal:
 
 
 class TurnProgress:
-    def __init__(self, console):
+    def __init__(self, console, *, quiet=False):
         self.console = console
+        self.quiet = quiet
         self.tools = 0
         self.failures = 0
         self.elapsed = 0.0
@@ -81,7 +90,7 @@ class TurnProgress:
 
     def __enter__(self):
         self.started = monotonic()
-        if self.console.is_terminal:
+        if self.console.is_terminal and not self.quiet:
             self.status = self.console.status(Text("Working…", style="cyan"), spinner="dots")
             self.status.start()
         return self
@@ -101,6 +110,8 @@ class TurnProgress:
         elif event.kind == "tool_end":
             self.tools += 1
             self.failures += int(event.failed)
+            if self.quiet:
+                return
             symbol = "✗" if event.failed else "✓"
             self.console.print(
                 Text(f"  {symbol} {self.pending}", style="red" if event.failed else "green")

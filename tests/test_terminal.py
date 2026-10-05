@@ -9,6 +9,16 @@ from app.terminal import Terminal
 
 
 class TerminalTests(unittest.TestCase):
+    def test_quiet_presentation_has_only_raw_answer(self):
+        output = StringIO()
+        terminal = Terminal(Console(file=output, force_terminal=False), quiet=True)
+        terminal.welcome(Path.cwd(), "granite", "http://localhost:11434/v1")
+        with terminal.progress() as progress:
+            progress(ProgressEvent("tool_end", "ok"))
+        terminal.answer("# Raw answer")
+        terminal.footer("granite", progress)
+        self.assertEqual(output.getvalue(), "# Raw answer\n")
+
     def test_progress_reports_tools_errors_and_elapsed_time(self):
         output = StringIO()
         terminal = Terminal(Console(file=output, force_terminal=False))

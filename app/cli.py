@@ -53,12 +53,15 @@ def parse_args(argv=None):
 
 def main(argv=None):
     args = parse_args(argv)
+    if args.prompt is None and (not sys.stdin.isatty() or not sys.stdout.isatty()):
+        print('Interactive mlab needs a terminal. Use: mlab --prompt "your task"', file=sys.stderr)
+        return 2
     settings = Settings(args.base_url, Settings.from_env().api_key, args.model)
     tools = create_tool_registry(LocalTools(Workspace(args.workspace)))
     try:
         with settings.create_client() as client:
             if args.prompt is None:
-                terminal = Terminal()
+                terminal = Terminal(quiet=args.quiet)
                 terminal.welcome(args.workspace, args.model, args.base_url)
                 return chat(
                     Session(client, tools, args.model, args.max_tool_rounds),
@@ -66,12 +69,31 @@ def main(argv=None):
                     Input(),
                     base_url=args.base_url,
                 )
-            print(
-                run_agent(
-                    client, args.prompt, args.verbose, args.max_tool_rounds, args.model, tools=tools
+            if sys.stdout.isatty() and not args.quiet and not args.verbose:
+                terminal = Terminal()
+                with terminal.progress() as progress:
+                    answer = run_agent(
+                        client,
+                        args.prompt,
+                        max_tool_rounds=args.max_tool_rounds,
+                        model=args.model,
+                        tools=tools,
+                        on_event=progress,
+                    )
+                terminal.answer(answer)
+                terminal.footer(args.model, progress)
+            else:
+                print(
+                    run_agent(
+                        client,
+                        args.prompt,
+                        args.verbose,
+                        args.max_tool_rounds,
+                        args.model,
+                        tools=tools,
+                    )
+                    or ""
                 )
-                or ""
-            )
     except KeyboardInterrupt:
         print("Cancelled. Completed file changes remain.", file=sys.stderr)
         return 130

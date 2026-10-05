@@ -57,9 +57,11 @@ Deliver this branch in at least 15 meaningful, verified commits.
   Verification: connection/model/API failures and cancellation tests.
   Result: 20 focused tests passed; bounded timeout, actionable provider errors,
   cancellation recovery, and one-shot exit codes verified.
-- [~] 14. Keep one-shot and non-TTY output predictable.
+- [x] 14. Keep one-shot and non-TTY output predictable.
   Verification: redirected output, quiet/verbose flags, and non-TTY startup tests.
-- [ ] 15. Install `mlab` and verify a live Granite follow-up from another directory.
+  Result: 11 CLI/rendering/error tests passed; plain stdout, verbose stderr,
+  quiet presentation, and early non-TTY guidance verified.
+- [~] 15. Install `mlab` and verify a live Granite follow-up from another directory.
   Verification: editable tool installation, actual file tool, and remembered follow-up.
 - [ ] 16. Document installation, appearance, controls, and extension points.
   Verification: full unittest suite, Ruff, package build, and final branch review.
