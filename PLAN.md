@@ -35,9 +35,10 @@ Deliver this branch in at least 15 meaningful, verified commits.
 - [x] 6. Emit bounded model/tool progress events independently of presentation.
   Verification: event order and tool-error tests plus existing agent tests.
   Result: 25 focused tests passed; progress hides write content and reports errors.
-- [~] 7. Render welcome, Markdown answers, and concise metadata.
+- [x] 7. Render welcome, Markdown answers, and concise metadata.
   Verification: narrow-terminal and plain-output rendering checks.
-- [ ] 8. Display a spinner, tool progress, and turn statistics.
+  Result: two rendering tests passed at 36 columns; no ANSI in plain output.
+- [~] 8. Display a spinner, tool progress, and turn statistics.
   Verification: captured progress output and success/error counts.
 - [ ] 9. Add editable input, history, multiline entry, and command completion.
   Verification: prompt-toolkit pipe input tests and keyboard bindings.
