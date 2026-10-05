@@ -2,6 +2,7 @@
 
 import re
 from pathlib import Path
+from time import monotonic
 from urllib.parse import urlparse
 
 from rich.console import Console
@@ -45,3 +46,52 @@ class Terminal:
 
     def error(self, message):
         self.console.print(Text(clean_text(message), style="red"))
+
+    def progress(self):
+        return TurnProgress(self.console)
+
+    def footer(self, model, progress):
+        self.console.rule(style="dim")
+        self.notice(
+            f"{model} · {progress.tools} tools · {progress.failures} errors · "
+            f"{progress.elapsed:.1f}s"
+        )
+        self.console.print()
+
+
+class TurnProgress:
+    def __init__(self, console):
+        self.console = console
+        self.tools = 0
+        self.failures = 0
+        self.elapsed = 0.0
+        self.pending = ""
+        self.status = None
+
+    def __enter__(self):
+        self.started = monotonic()
+        if self.console.is_terminal:
+            self.status = self.console.status(Text("Working…", style="cyan"), spinner="dots")
+            self.status.start()
+        return self
+
+    def __exit__(self, *_):
+        if self.status:
+            self.status.stop()
+        self.elapsed = monotonic() - self.started
+
+    def __call__(self, event):
+        if event.kind == "request" and self.status:
+            self.status.update(Text("Thinking…", style="cyan"))
+        elif event.kind == "tool_start":
+            self.pending = clean_text(event.summary.removeprefix("Using "))
+            if self.status:
+                self.status.update(Text(self.pending, style="cyan"))
+        elif event.kind == "tool_end":
+            self.tools += 1
+            self.failures += int(event.failed)
+            symbol = "✗" if event.failed else "✓"
+            self.console.print(
+                Text(f"  {symbol} {self.pending}", style="red" if event.failed else "green")
+            )
+            self.console.print(Text("    " + clean_text(event.summary), style="dim"))
