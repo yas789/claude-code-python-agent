@@ -1,4 +1,5 @@
 import json
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -45,6 +46,35 @@ class WriteToolTests(helpers.WorkspaceTestCase):
         with self.assertRaisesRegex(RuntimeError, "edited content must be valid UTF-8 text"):
             self.tools.edit_file("example.txt", "world", "\ud800")
         self.assertEqual(self.file.read_bytes(), original)
+
+    def test_edit_partial_staging_write_failure_preserves_original(self):
+        original = self.file.read_bytes()
+        create_staged = tempfile.NamedTemporaryFile
+
+        def failing_staged_file(**kwargs):
+            staged = create_staged(**kwargs)
+            write = staged.write
+
+            def partial_write(content):
+                write(content[:3])
+                raise OSError("disk full")
+
+            staged.write = partial_write
+            return staged
+
+        with patch("app.writes.tempfile.NamedTemporaryFile", side_effect=failing_staged_file):
+            with self.assertRaisesRegex(OSError, "disk full"):
+                self.tools.edit_file("example.txt", "world", "agent")
+        self.assertEqual(self.file.read_bytes(), original)
+        self.assertEqual(list(self.root.iterdir()), [self.file])
+
+    def test_edit_replace_failure_preserves_original_and_cleans_staging(self):
+        original = self.file.read_bytes()
+        with patch("app.writes.os.replace", side_effect=PermissionError("replacement denied")):
+            with self.assertRaisesRegex(PermissionError, "replacement denied"):
+                self.tools.edit_file("example.txt", "world", "agent")
+        self.assertEqual(self.file.read_bytes(), original)
+        self.assertEqual(list(self.root.iterdir()), [self.file])
 
     def test_agent_receives_edit_validation_error_without_mutation(self):
         client = helpers.FakeClient(

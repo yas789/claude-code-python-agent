@@ -30,6 +30,7 @@ from app.registry import ToolRegistry, parse_tool_call
 from app.schemas import TOOLS as TOOL_SCHEMAS
 from app.validation import validate_path, validate_positive_integer, validate_text
 from app.workspace import Workspace
+from app.writes import replace_file
 
 BASE_URL = os.getenv("OPENROUTER_BASE_URL", default="https://openrouter.ai/api/v1")
 TOOLS = TOOL_SCHEMAS
@@ -135,7 +136,7 @@ class LocalTools:
             edited_content = content.replace(old_text, new_text, 1).encode("utf-8")
         except UnicodeEncodeError as error:
             raise ToolError("edited content must be valid UTF-8 text") from error
-        file_path.write_bytes(edited_content)
+        replace_file(file_path, edited_content)
         return json.dumps(
             {
                 "status": "updated",

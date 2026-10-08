@@ -104,8 +104,10 @@ the terminal milestone above is complete. Preserve the existing tool receipt.
   Verification: reproduce the surrogate regression; run write-tool tests.
   Result: regression reproduced before the fix; 13 write-tool tests and Ruff
   lint/format/diff checks passed after pre-encoding.
-- [ ] 2. Stage edits beside the destination and replace atomically.
+- [x] 2. Stage edits beside the destination and replace atomically.
   Verification: inject staging-write and replacement failures; verify original bytes.
+  Result: all 15 write-tool tests passed, including partial-write and replacement
+  failures with staging cleanup. Ruff lint/format/diff checks passed.
 - [ ] 3. Preserve newline bytes and permission bits across replacements.
   Verification: CRLF/mixed-newline, executable-mode, and symlink-target tests.
 - [ ] 4. Verify interruption cleanup and agent recovery from failed edits.
