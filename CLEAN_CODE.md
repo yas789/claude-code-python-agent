@@ -13,7 +13,7 @@ standard, not a claim of universal certification.
 - [ ] Tool registration connects schemas and implementations in one place.
 - [ ] Validate argument objects and values before side effects.
 - [ ] Expected failures become actionable errors; programming failures remain visible.
-- [ ] Encoding failures do not truncate existing files.
+- [x] Encoding failures do not truncate existing files.
 - [ ] Preserve containment, bounded I/O, pagination, and exclusive creation.
 - [ ] Logs summarize large arguments and structured results without dumping content.
 - [ ] Tests own their filesystem inputs and use scoped mocks.
@@ -28,7 +28,7 @@ standard, not a claim of universal certification.
 | Finding | Priority | Baseline location | Status |
 | --- | --- | --- | --- |
 | Verbose logging crashes on JSON arrays/null before error handling | High | `app/main.py:517–541` | Open |
-| Edit encoding can fail after destination truncation | High | `app/main.py:311` | Open |
+| Edit encoding can fail after destination truncation | High | `app/main.py:311` | Fixed: pre-encoding and atomic replacement; see `PLAN.md` edit reliability delivery |
 | Test imports replace the SDK globally | High | `tests/helpers.py`, `tests/test_tool_contracts.py` | Open |
 | CLI, tools, SDK, schemas, and loop share one module | Medium | `app/main.py` | Open |
 | Mutable workspace and import-time environment state | Medium | `app/main.py:9–12,571–575` | Open |

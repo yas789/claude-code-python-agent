@@ -306,6 +306,26 @@ edit returns:
 {"status": "updated", "path": "example.txt", "replacements": 1}
 ```
 
+Edits decode the original UTF-8 bytes without newline normalization and encode
+the complete replacement before opening a staging file. Invalid UTF-8 replacement
+text returns `error: edited content must be valid UTF-8 text` without mutation.
+Untouched bytes retain their original CRLF, CR, or LF endings; multiline
+`old_text` must match those actual endings exactly. `read_file` normalizes endings
+to LF, so a single-line target is useful when reading a CRLF file through that tool.
+
+The encoded edit is staged in a temporary file in the destination directory,
+closed, assigned the original permission bits, and committed with `os.replace`.
+Encoding, staging-write, permission-setting, and replacement failures before
+commit leave the original intact. Staging files are cleaned up on normal errors
+and Ctrl+C. Cancellation after replacement retains the completed edit; inspect
+the file before retrying. In-workspace symlinks are resolved first, so editing
+updates the target and preserves the symlink.
+
+Atomic replacement swaps the destination directory entry for a new file;
+permission bits are preserved, while inode identity and other inode metadata
+are not guaranteed. This provides atomic visibility, not concurrent-writer
+locking or crash-durable persistence.
+
 `create_file` requires string content encodable as UTF-8, allows empty content,
 and requires an existing parent directory. It uses exclusive creation so an
 existing or concurrently created file is not overwritten. A successful creation

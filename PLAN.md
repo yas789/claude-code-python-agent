@@ -119,7 +119,11 @@ the terminal milestone above is complete. Preserve the existing tool receipt.
   retry; failed replacement remains readable; cancellation before replacement
   preserves the original, while cancellation after replacement retains the edit
   and permits a follow-up inspection. Staging cleanup, Ruff, and diff checks passed.
-- [ ] 5. Document guarantees and complete the audit.
+- [x] 5. Document guarantees and complete the audit.
   Verification: full unittest suite, Ruff lint/format, and diff checks.
+  Result: all 217 tests passed under `uv run --locked`; Ruff lint/format and diff
+  checks passed. README documents exact newline matching, atomic commit boundaries,
+  permissions, symlinks, and replacement semantics. The encoding finding is closed
+  in `CLEAN_CODE.md`; the partial refactor plan records this focused delivery.
 
 Each completed step is one commit; update results before starting the next step.

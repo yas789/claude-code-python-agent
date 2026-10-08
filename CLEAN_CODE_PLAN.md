@@ -49,3 +49,8 @@ Every step requires focused tests, formatting/lint checks when available, and
     mutable global. Tests inject registries; interleaved reads/writes/search/agent runs
     stay isolated, and CLI/agent defaults use runtime cwd. All 170 tests, Ruff
     lint/format, and diff checks passed. No blockers. Step 13 is next.
+
+Follow-up: the five-commit edit reliability delivery in `PLAN.md` completes the
+failure-preservation portion of step 14: pre-encoding, atomic replacement,
+permission/newline preservation, staging cleanup, and regression tests. The
+broader tool extraction checklist above remains partial.
