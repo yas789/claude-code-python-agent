@@ -1,58 +1,156 @@
-# Claude Code Python Agent
+# mlab — Local Coding Agent
 
-A small command-line coding agent that talks to an OpenAI-compatible API and lets the model inspect and modify the local workspace through tools.
+A terminal coding companion with editable prompts, follow-up conversations,
+Markdown answers, and compact tool progress. It connects to local Ollama by
+default and lets the model inspect and modify the current project through tools.
 
 ## Setup
 
-Set your OpenRouter API key:
+Requires Python 3.14+, [uv](https://docs.astral.sh/uv/), and a running
+[Ollama](https://ollama.com/) instance. Install from this checkout:
 
 ```sh
-export OPENROUTER_API_KEY="your-key"
+uv tool install --editable .
+ollama pull granite3.3:2b
 ```
 
-Optional:
+If Ollama is not already running, start it in another terminal:
 
 ```sh
-export OPENROUTER_BASE_URL="https://openrouter.ai/api/v1"
+ollama serve
 ```
 
-## Usage
+If `mlab` is not on your PATH, run `uv tool update-shell` and reopen your terminal.
+The editable installation follows changes in this checkout; reinstall after
+changing dependencies. You can also run `uv run mlab` from the checkout.
+
+## Open a conversation
+
+Run `mlab` inside any project directory:
+
+```sh
+mlab
+```
+
+```text
+  mlab
+  Your local coding companion
+
+  ~/git/my-project
+  granite3.3:2b · Ollama
+
+  Ask about your code or describe a change.
+  /help for commands · Alt+Enter for a newline
+
+› Explain this project
+
+  ✓ list_files path=.
+    ok (8 entries, truncated=False)
+
+mlab
+This project contains ...
+
+──────────────────────────────────────────────
+granite3.3:2b · 1 tools · 0 errors · 3.4s
+
+›
+```
+
+Responses render Markdown and highlighted code. The transcript stays in native
+terminal scrollback; a spinner shows activity while the model is working.
+Follow-up prompts retain earlier answers and tool results. Sessions and input
+history remain in memory until you exit. Responses appear when each model
+request finishes; token streaming and saved sessions are future work.
+
+### Commands and controls
+
+| Command | Action |
+| --- | --- |
+| `/help` | Show commands and keyboard shortcuts |
+| `/new` | Clear conversation context |
+| `/model` | Show the current model |
+| `/model <name>` | Switch model and clear context (same name keeps context) |
+| `/exit` | Exit mlab |
+
+- **Enter:** send the prompt.
+- **Alt+Enter:** insert a newline (on macOS, Escape then Enter also works).
+- **Up/Down:** navigate input/history.
+- **Tab:** complete slash commands.
+- **Ctrl+C:** clear input or cancel the active turn; completed file edits remain.
+- **Ctrl+D:** exit from an empty input buffer.
+
+Connection failures, missing models, timeouts, and empty answers display errors
+and let you try another prompt. Model requests use temperature 0 and a 120-second
+timeout, with automatic provider retries disabled. Models need native tool-call
+support: `granite3.3:2b` passed the local file-read/follow-up smoke check;
+`qwen2.5-coder:3b` emitted tool JSON as ordinary text in that check.
+
+## One-shot usage
 
 Run one prompt:
 
 ```sh
-./your_program.sh --prompt "summarize this repository"
+mlab --prompt "summarize this repository"
 ```
 
 The short `-p` flag still works:
 
 ```sh
-./your_program.sh -p "find where tools are defined"
+mlab -p "find where tools are defined"
 ```
 
 Show tool activity:
 
 ```sh
-./your_program.sh --verbose --prompt "read the README and list available tools"
+mlab --verbose --prompt "read the README and list available tools"
 ```
 
-Use a different model:
+Select a model explicitly:
 
 ```sh
-./your_program.sh --model anthropic/claude-haiku-4.5 --prompt "inspect app/main.py"
+mlab --model granite3.3:2b --prompt "inspect app/main.py"
 ```
 
 Limit tool-call rounds:
 
 ```sh
-./your_program.sh --max-tool-rounds 3 --prompt "summarize the codebase"
+mlab --max-tool-rounds 3 --prompt "summarize the codebase"
 ```
 
 Choose a workspace:
 
 ```sh
-./your_program.sh --workspace /path/to/project --prompt "search for TODOs"
+mlab --workspace /path/to/project --prompt "search for TODOs"
 ```
+
+Redirected one-shot stdout contains only the answer. `--verbose` adds bounded
+tool logs to stderr. `--quiet` prints raw answers and suppresses progress and
+metadata, including in interactive mode. Interactive startup requires a TTY;
+use `--prompt` for scripts. Set `NO_COLOR=1` to disable colors.
+
+The original `./your_program.sh --prompt "..."` launcher remains available and
+defaults to local Granite. Its Python entry point (`app.main`) retains the
+original OpenRouter configuration behavior.
+
+## Provider configuration
+
+`mlab` needs no API key for local Ollama. Runtime overrides:
+
+| Setting | Default | Override |
+| --- | --- | --- |
+| Model | `granite3.3:2b` | `--model`, then `MLAB_MODEL` |
+| API URL | `http://localhost:11434/v1` | `--base-url`, then `MLAB_BASE_URL`, then `OPENROUTER_BASE_URL` |
+| API key | `ollama` placeholder | `MLAB_API_KEY`, then `OPENROUTER_API_KEY` |
+| Workspace | Current directory | `--workspace` |
+
+Example for OpenRouter:
+
+```sh
+export MLAB_API_KEY="your-key"
+mlab --base-url https://openrouter.ai/api/v1 --model anthropic/claude-haiku-4.5
+```
+
+See [TERMINAL_DESIGN.md](TERMINAL_DESIGN.md) for design and future extension points.
 
 ## Tools
 
@@ -208,6 +306,26 @@ edit returns:
 {"status": "updated", "path": "example.txt", "replacements": 1}
 ```
 
+Edits decode the original UTF-8 bytes without newline normalization and encode
+the complete replacement before opening a staging file. Invalid UTF-8 replacement
+text returns `error: edited content must be valid UTF-8 text` without mutation.
+Untouched bytes retain their original CRLF, CR, or LF endings; multiline
+`old_text` must match those actual endings exactly. `read_file` normalizes endings
+to LF, so a single-line target is useful when reading a CRLF file through that tool.
+
+The encoded edit is staged in a temporary file in the destination directory,
+closed, assigned the original permission bits, and committed with `os.replace`.
+Encoding, staging-write, permission-setting, and replacement failures before
+commit leave the original intact. Staging files are cleaned up on normal errors
+and Ctrl+C. Cancellation after replacement retains the completed edit; inspect
+the file before retrying. In-workspace symlinks are resolved first, so editing
+updates the target and preserves the symlink.
+
+Atomic replacement swaps the destination directory entry for a new file;
+permission bits are preserved, while inode identity and other inode metadata
+are not guaranteed. This provides atomic visibility, not concurrent-writer
+locking or crash-durable persistence.
+
 `create_file` requires string content encodable as UTF-8, allows empty content,
 and requires an existing parent directory. It uses exclusive creation so an
 existing or concurrently created file is not overwritten. A successful creation
@@ -224,17 +342,43 @@ edit targets are rejected before mutation.
 
 ## Development
 
+Install the locked runtime and development dependencies:
+
+```sh
+uv sync --locked
+```
+
+Run all checks in the project environment; tests use scoped client mocks and
+never replace the installed OpenAI package globally.
+
 Run syntax checks:
 
 ```sh
-python3 -m py_compile app/main.py
+uv run --locked python -m py_compile app/main.py
 ```
 
 Run tests:
 
 ```sh
-python3 -m unittest discover -s tests -p 'test_*.py'
+uv run --locked python -m unittest discover -s tests -p 'test_*.py'
 ```
+
+Check formatting and lint:
+
+```sh
+uv run --locked ruff check app tests
+uv run --locked ruff format --check app tests
+```
+
+Opt-in live Ollama verification (requires the installed command):
+
+```sh
+uv run --locked python tests/live_mlab.py --command "$HOME/.local/bin/mlab"
+```
+
+This creates a temporary workspace, verifies an actual file tool through the
+installed command, and checks a real follow-up conversation. Ordinary tests use
+scripted clients and include a pseudo-terminal startup/help/exit check.
 
 ## Architecture and Long-Term Plan
 

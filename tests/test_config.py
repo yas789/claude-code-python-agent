@@ -1,23 +1,24 @@
+import tempfile
 import unittest
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
-from app import main
-
+from app import config, main
 from tests.helpers import fixture_text
 
 
 def assert_parse_error(test_case, argv):
     with patch("sys.argv", argv):
         with patch("sys.stderr", StringIO()):
-            with test_case.assertRaises(SystemExit):
+            with test_case.assertRaises(SystemExit) as error:
                 main.parse_args()
+            test_case.assertEqual(error.exception.code, 2)
 
 
 class ConfigTests(unittest.TestCase):
     def test_tool_loop_has_a_maximum_round_limit(self):
-        self.assertGreater(main.MAX_TOOL_ROUNDS, 0)
+        self.assertGreater(config.DEFAULT_MAX_TOOL_ROUNDS, 0)
 
     def test_create_client_requires_api_key(self):
         with patch.dict("os.environ", {}, clear=True):
@@ -77,21 +78,35 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(args.model, "test/model")
 
     def test_parse_args_accepts_workspace(self):
-        with patch("sys.argv", ["agent", "--prompt", "hello", "--workspace", "."]):
-            args = main.parse_args()
+        with tempfile.TemporaryDirectory() as workspace:
+            root = Path(workspace).resolve()
+            with patch("sys.argv", ["agent", "--prompt", "hello", "--workspace", str(root)]):
+                args = main.parse_args()
 
-        self.assertEqual(args.workspace, Path(".").resolve())
+            self.assertEqual(args.workspace, root)
+
+    def test_parse_args_defaults_to_runtime_cwd(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with (
+                patch("sys.argv", ["agent", "--prompt", "hello"]),
+                patch.object(Path, "cwd", return_value=root),
+            ):
+                self.assertEqual(main.parse_args().workspace, root)
 
     def test_parse_args_rejects_missing_workspace(self):
-        assert_parse_error(self, ["agent", "--prompt", "hello", "--workspace", "missing"])
+        with tempfile.TemporaryDirectory() as workspace:
+            missing = Path(workspace).resolve() / "missing"
+            assert_parse_error(self, ["agent", "--prompt", "hello", "--workspace", str(missing)])
 
     def test_parse_args_help_describes_agent_options(self):
         stdout = StringIO()
 
         with patch("sys.argv", ["agent", "--help"]):
             with patch("sys.stdout", stdout):
-                with self.assertRaises(SystemExit):
+                with self.assertRaises(SystemExit) as error:
                     main.parse_args()
+                self.assertEqual(error.exception.code, 0)
 
         help_text = stdout.getvalue()
         self.assertIn("Run a local coding agent", help_text)
