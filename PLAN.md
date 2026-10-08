@@ -93,3 +93,24 @@ Retain Granite unless Qwen passes actual tool execution. Verify deterministic
 generation and report empty answers as recoverable failures before completing.
 Resolved: deterministic Granite generation passed the live check. Qwen did not
 pass native tool execution, so the default remains Granite.
+
+## Edit reliability: five-commit delivery
+
+Goal: prevent failed edits from truncating files, with five narrow verified commits.
+Starting state: editing writes directly to the destination without pre-encoding;
+the terminal milestone above is complete. Preserve the existing tool receipt.
+
+- [x] 1. Pre-encode edited content and reject invalid UTF-8 before mutation.
+  Verification: reproduce the surrogate regression; run write-tool tests.
+  Result: regression reproduced before the fix; 13 write-tool tests and Ruff
+  lint/format/diff checks passed after pre-encoding.
+- [ ] 2. Stage edits beside the destination and replace atomically.
+  Verification: inject staging-write and replacement failures; verify original bytes.
+- [ ] 3. Preserve newline bytes and permission bits across replacements.
+  Verification: CRLF/mixed-newline, executable-mode, and symlink-target tests.
+- [ ] 4. Verify interruption cleanup and agent recovery from failed edits.
+  Verification: cancellation and scripted model recovery tests.
+- [ ] 5. Document guarantees and complete the audit.
+  Verification: full unittest suite, Ruff lint/format, and diff checks.
+
+Each completed step is one commit; update results before starting the next step.

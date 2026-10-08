@@ -40,6 +40,12 @@ class WriteToolTests(helpers.WorkspaceTestCase):
             self.tools.edit_file("example.txt", "", "new")
         self.assertEqual(self.file.read_text(), "")
 
+    def test_edit_rejects_unencodable_text_without_changing_file(self):
+        original = self.file.read_bytes()
+        with self.assertRaisesRegex(RuntimeError, "edited content must be valid UTF-8 text"):
+            self.tools.edit_file("example.txt", "world", "\ud800")
+        self.assertEqual(self.file.read_bytes(), original)
+
     def test_agent_receives_edit_validation_error_without_mutation(self):
         client = helpers.FakeClient(
             [

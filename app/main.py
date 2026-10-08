@@ -131,7 +131,11 @@ class LocalTools:
         if occurrences > 1:
             raise ToolError("old_text appears multiple times")
 
-        file_path.write_text(content.replace(old_text, new_text, 1), encoding="utf-8")
+        try:
+            edited_content = content.replace(old_text, new_text, 1).encode("utf-8")
+        except UnicodeEncodeError as error:
+            raise ToolError("edited content must be valid UTF-8 text") from error
+        file_path.write_bytes(edited_content)
         return json.dumps(
             {
                 "status": "updated",
