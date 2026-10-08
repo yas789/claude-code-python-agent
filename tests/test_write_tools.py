@@ -1,10 +1,12 @@
 import json
+import os
 import stat
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
 from app import main
+from app.session import Session
 from tests import helpers
 
 
@@ -107,6 +109,132 @@ class WriteToolTests(helpers.WorkspaceTestCase):
         self.assertEqual(link.read_bytes(), b"hello agent")
         self.assertEqual(receipt["path"], "example.txt")
         self.assertEqual(set(self.root.iterdir()), {self.file, link})
+
+    def test_agent_recovers_from_unencodable_edit_with_valid_retry(self):
+        client = helpers.FakeClient(
+            [
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "invalid",
+                            "edit_file",
+                            json.dumps(
+                                {"path": "example.txt", "old_text": "world", "new_text": "\ud800"}
+                            ),
+                        )
+                    ],
+                ),
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "valid",
+                            "edit_file",
+                            json.dumps(
+                                {"path": "example.txt", "old_text": "world", "new_text": "agent"}
+                            ),
+                        )
+                    ],
+                ),
+                helpers.assistant_message("Updated example.txt."),
+            ]
+        )
+        self.assertEqual(self.run_agent(client, "Edit the file"), "Updated example.txt.")
+        messages = client.completions.calls[2]["messages"]
+        self.assertEqual(
+            helpers.tool_result(messages, "invalid")["content"],
+            "error: edited content must be valid UTF-8 text",
+        )
+        self.assertEqual(
+            json.loads(helpers.tool_result(messages, "valid")["content"])["status"], "updated"
+        )
+        self.assertEqual(self.file.read_bytes(), b"hello agent")
+        self.assertEqual(list(self.root.iterdir()), [self.file])
+
+    def test_agent_can_read_original_after_failed_replacement(self):
+        client = helpers.FakeClient(
+            [
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "edit",
+                            "edit_file",
+                            json.dumps(
+                                {"path": "example.txt", "old_text": "world", "new_text": "agent"}
+                            ),
+                        )
+                    ],
+                ),
+                helpers.assistant_message(
+                    None, [helpers.tool_call("read", "read_file", '{"path": "example.txt"}')]
+                ),
+                helpers.assistant_message("The edit failed; original content is intact."),
+            ]
+        )
+        with patch("app.writes.os.replace", side_effect=PermissionError("replacement denied")):
+            self.run_agent(client, "Edit and inspect the file")
+        messages = client.completions.calls[2]["messages"]
+        self.assertEqual(
+            helpers.tool_result(messages, "edit")["content"], "error: replacement denied"
+        )
+        self.assertEqual(
+            json.loads(helpers.tool_result(messages, "read")["content"])["content"], "hello world"
+        )
+        self.assertEqual(self.file.read_bytes(), b"hello world")
+        self.assertEqual(list(self.root.iterdir()), [self.file])
+
+    def test_edit_cancellation_before_replace_preserves_original_and_cleans_staging(self):
+        for operation in ("app.writes.Path.chmod", "app.writes.os.replace"):
+            with self.subTest(operation=operation):
+                with patch(operation, side_effect=KeyboardInterrupt):
+                    with self.assertRaises(KeyboardInterrupt):
+                        self.tools.edit_file("example.txt", "world", "agent")
+                self.assertEqual(self.file.read_bytes(), b"hello world")
+                self.assertEqual(list(self.root.iterdir()), [self.file])
+
+    def test_session_cancellation_after_replace_retains_completed_edit(self):
+        replace = os.replace
+
+        def replace_then_interrupt(source, destination):
+            replace(source, destination)
+            raise KeyboardInterrupt
+
+        client = helpers.FakeClient(
+            [
+                helpers.assistant_message(
+                    None,
+                    [
+                        helpers.tool_call(
+                            "edit",
+                            "edit_file",
+                            json.dumps(
+                                {"path": "example.txt", "old_text": "world", "new_text": "agent"}
+                            ),
+                        )
+                    ],
+                ),
+                helpers.assistant_message(
+                    None, [helpers.tool_call("read", "read_file", '{"path": "example.txt"}')]
+                ),
+                helpers.assistant_message("The completed edit remains."),
+            ]
+        )
+        session = Session(client, self.registry)
+        with patch("app.writes.os.replace", side_effect=replace_then_interrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                session.turn("Edit the file")
+        self.assertEqual(self.file.read_bytes(), b"hello agent")
+        self.assertEqual(list(self.root.iterdir()), [self.file])
+        self.assertIn(
+            "completion is unknown", helpers.tool_result(session.messages, "edit")["content"]
+        )
+        self.assertEqual(session.turn("Inspect the file"), "The completed edit remains.")
+        messages = client.completions.calls[2]["messages"]
+        self.assertEqual(
+            json.loads(helpers.tool_result(messages, "read")["content"])["content"], "hello agent"
+        )
 
     def test_agent_receives_edit_validation_error_without_mutation(self):
         client = helpers.FakeClient(

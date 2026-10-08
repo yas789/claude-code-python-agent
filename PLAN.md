@@ -113,8 +113,12 @@ the terminal milestone above is complete. Preserve the existing tool receipt.
   Result: 23 write-tool/workspace tests passed; exact multiline matching, unchanged
   newline bytes, permissions, and resolved symlink targets verified. Ruff and diff
   checks passed.
-- [ ] 4. Verify interruption cleanup and agent recovery from failed edits.
+- [x] 4. Verify interruption cleanup and agent recovery from failed edits.
   Verification: cancellation and scripted model recovery tests.
+  Result: 47 write-tool/session/agent tests passed. Invalid UTF-8 supports a valid
+  retry; failed replacement remains readable; cancellation before replacement
+  preserves the original, while cancellation after replacement retains the edit
+  and permits a follow-up inspection. Staging cleanup, Ruff, and diff checks passed.
 - [ ] 5. Document guarantees and complete the audit.
   Verification: full unittest suite, Ruff lint/format, and diff checks.
 
