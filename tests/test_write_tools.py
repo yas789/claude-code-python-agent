@@ -1,4 +1,5 @@
 import json
+import stat
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -75,6 +76,37 @@ class WriteToolTests(helpers.WorkspaceTestCase):
                 self.tools.edit_file("example.txt", "world", "agent")
         self.assertEqual(self.file.read_bytes(), original)
         self.assertEqual(list(self.root.iterdir()), [self.file])
+
+    def test_edit_preserves_untouched_newline_bytes(self):
+        for original in (b"hello world\r\n", b"hello\r\nworld\nend\r", b"hello world"):
+            with self.subTest(original=original):
+                self.file.write_bytes(original)
+                self.tools.edit_file("example.txt", "world", "agent")
+                self.assertEqual(self.file.read_bytes(), original.replace(b"world", b"agent"))
+
+    def test_edit_matches_multiline_text_without_normalizing_newlines(self):
+        self.file.write_bytes(b"hello\r\nworld\r\n")
+        self.tools.edit_file("example.txt", "hello\r\nworld", "new\r\ntext")
+        self.assertEqual(self.file.read_bytes(), b"new\r\ntext\r\n")
+
+    def test_edit_preserves_permission_bits(self):
+        for mode in (0o640, 0o755):
+            with self.subTest(mode=oct(mode)):
+                self.file.write_text("hello world")
+                self.file.chmod(mode)
+                self.tools.edit_file("example.txt", "world", "agent")
+                self.assertEqual(stat.S_IMODE(self.file.stat().st_mode), mode)
+                self.assertEqual(self.file.read_bytes(), b"hello agent")
+
+    def test_edit_in_workspace_symlink_updates_target_and_preserves_link(self):
+        link = self.root / "link.txt"
+        link.symlink_to(self.file.name)
+        receipt = json.loads(self.tools.edit_file("link.txt", "world", "agent"))
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(self.file.read_bytes(), b"hello agent")
+        self.assertEqual(link.read_bytes(), b"hello agent")
+        self.assertEqual(receipt["path"], "example.txt")
+        self.assertEqual(set(self.root.iterdir()), {self.file, link})
 
     def test_agent_receives_edit_validation_error_without_mutation(self):
         client = helpers.FakeClient(

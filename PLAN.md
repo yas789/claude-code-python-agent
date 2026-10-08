@@ -108,8 +108,11 @@ the terminal milestone above is complete. Preserve the existing tool receipt.
   Verification: inject staging-write and replacement failures; verify original bytes.
   Result: all 15 write-tool tests passed, including partial-write and replacement
   failures with staging cleanup. Ruff lint/format/diff checks passed.
-- [ ] 3. Preserve newline bytes and permission bits across replacements.
+- [x] 3. Preserve newline bytes and permission bits across replacements.
   Verification: CRLF/mixed-newline, executable-mode, and symlink-target tests.
+  Result: 23 write-tool/workspace tests passed; exact multiline matching, unchanged
+  newline bytes, permissions, and resolved symlink targets verified. Ruff and diff
+  checks passed.
 - [ ] 4. Verify interruption cleanup and agent recovery from failed edits.
   Verification: cancellation and scripted model recovery tests.
 - [ ] 5. Document guarantees and complete the audit.

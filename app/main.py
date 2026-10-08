@@ -125,7 +125,7 @@ class LocalTools:
         if not file_path.is_file():
             raise ToolError(f"path is not a file: {path}")
 
-        content = file_path.read_text(encoding="utf-8")
+        content = file_path.read_bytes().decode("utf-8")
         occurrences = content.count(old_text)
         if occurrences == 0:
             raise ToolError("old_text not found")
