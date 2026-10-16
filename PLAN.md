@@ -164,9 +164,14 @@ historical evidence, not fresh verification. Use one verified commit per step.
   provider defaults/overrides, forwarded arguments, and real external-directory
   help. Ruff lint/format (42 files) and diff checks passed after formatting the
   new test module.
-- [ ] 6. Verify an isolated wheel installation and entry point in CI.
+- [x] 6. Verify an isolated wheel installation and entry point in CI.
   Verification: build wheel, install in a fresh environment, run help and non-TTY
   startup outside the checkout with checkout import paths removed.
+  Result: `tests/package_smoke.py` passed: built a fresh wheel, installed hashed
+  locked runtime requirements and the wheel into a temporary venv, checked
+  dependency compatibility and import location, and verified installed help and
+  exit code 2 on non-TTY startup from an unrelated directory. No provider calls.
+  CI runs the same script; Ruff lint/format (43 files) and diff checks passed.
 - [ ] 7. Reconcile clean-code findings and partial delivery status.
   Verification: audit changed claims against implementation and focused tests.
 - [ ] 8. Refresh architecture and roadmap status.
