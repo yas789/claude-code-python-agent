@@ -142,8 +142,12 @@ historical evidence, not fresh verification. Use one verified commit per step.
   Verification: full unittest suite, Ruff lint/format, and `git diff --check`.
   Result: all 217 tests passed; Ruff lint and formatting (41 files), and diff
   checks passed. No baseline failures. Starting tracked tree was clean.
-- [ ] 2. Use locked runtime/development dependencies in CI.
+- [x] 2. Use locked runtime/development dependencies in CI.
   Verification: inspect workflow structure; run its locked sync and test commands.
+  Result: CI pins uv 0.12.19 (the locally verified version), syncs the lockfile
+  including development dependencies, and runs checks with uv. Sync, syntax,
+  all 217 tests, and diff checks passed. Workflow structure manually reviewed;
+  actionlint is unavailable locally. GitHub-hosted execution awaits a push.
 - [ ] 3. Enforce existing Ruff lint and formatting standards in CI.
   Verification: run both locked Ruff commands and inspect workflow steps.
 - [ ] 4. Check syntax across application and test modules.
