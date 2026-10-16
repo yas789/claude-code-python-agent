@@ -152,8 +152,10 @@ historical evidence, not fresh verification. Use one verified commit per step.
   Verification: run both locked Ruff commands and inspect workflow steps.
   Result: named lint and formatting CI steps use the existing configuration;
   both commands passed (41 formatted files), with clean diff checks.
-- [ ] 4. Check syntax across application and test modules.
+- [x] 4. Check syntax across application and test modules.
   Verification: `uv run --locked python -m compileall -q app tests`.
+  Result: recursive syntax check passed; CI and README now use the same command.
+  Diff checks passed.
 - [ ] 5. Correct launcher project roots and verify external-directory use.
   Verification: focused launcher regressions without provider requests.
 - [ ] 6. Verify an isolated wheel installation and entry point in CI.

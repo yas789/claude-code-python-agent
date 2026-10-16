@@ -354,7 +354,7 @@ never replace the installed OpenAI package globally.
 Run syntax checks:
 
 ```sh
-uv run --locked python -m py_compile app/main.py
+uv run --locked python -m compileall -q app tests
 ```
 
 Run tests:

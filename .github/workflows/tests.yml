@@ -39,7 +39,7 @@ jobs:
         run: uv run --locked ruff format --check app tests
 
       - name: Check syntax
-        run: uv run --locked python -m py_compile app/main.py
+        run: uv run --locked python -m compileall -q app tests
 
       - name: Run tests
         run: uv run --locked python -m unittest discover -s tests -p 'test_*.py'
