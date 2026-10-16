@@ -16,9 +16,9 @@ export OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-ollama}"
 #
 # - Edit this to change how your program runs locally
 # - Edit .codecrafters/run.sh to change how your program runs remotely
-SCRIPT_DIR="$(dirname "$0")"
-PYTHONSAFEPATH=1 PYTHONPATH="$SCRIPT_DIR" exec uv run \
-  --project "$SCRIPT_DIR" \
+PROJECT_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+PYTHONSAFEPATH=1 PYTHONPATH="$PROJECT_ROOT" exec uv run \
+  --project "$PROJECT_ROOT" \
   --quiet \
   -m app.main \
   --model granite3.3:2b \

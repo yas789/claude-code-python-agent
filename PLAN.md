@@ -156,8 +156,14 @@ historical evidence, not fresh verification. Use one verified commit per step.
   Verification: `uv run --locked python -m compileall -q app tests`.
   Result: recursive syntax check passed; CI and README now use the same command.
   Diff checks passed.
-- [ ] 5. Correct launcher project roots and verify external-directory use.
+- [x] 5. Correct launcher project roots and verify external-directory use.
   Verification: focused launcher regressions without provider requests.
+  Result: reproduced the remote launcher's `.codecrafters` root error before
+  fixing it. Both launchers now use absolute checkout roots without changing the
+  caller's working directory. Four regressions passed, covering spaces in paths,
+  provider defaults/overrides, forwarded arguments, and real external-directory
+  help. Ruff lint/format (42 files) and diff checks passed after formatting the
+  new test module.
 - [ ] 6. Verify an isolated wheel installation and entry point in CI.
   Verification: build wheel, install in a fresh environment, run help and non-TTY
   startup outside the checkout with checkout import paths removed.

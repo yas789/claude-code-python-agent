@@ -8,12 +8,12 @@
 
 set -e # Exit on failure
 
-SCRIPT_DIR="$(dirname "$0")"
+PROJECT_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 
 # This is done to exclude pwd from the python's path variable
 # This prevents accidentally launching a module if it s present inside pwd
-PYTHONSAFEPATH=1 PYTHONPATH="$SCRIPT_DIR" exec uv run \
-  --project "$SCRIPT_DIR" \
+PYTHONSAFEPATH=1 PYTHONPATH="$PROJECT_ROOT" exec uv run \
+  --project "$PROJECT_ROOT" \
   --quiet \
   -m app.main \
   "$@"
