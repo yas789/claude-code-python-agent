@@ -127,3 +127,43 @@ the terminal milestone above is complete. Preserve the existing tool receipt.
   in `CLEAN_CODE.md`; the partial refactor plan records this focused delivery.
 
 Each completed step is one commit; update results before starting the next step.
+
+## Consolidation: ten-commit delivery
+
+Goal: establish a freshly verified baseline, reproducible CI, working launchers
+and packaging, accurate documentation, and an evidence-backed integration path.
+
+Starting state: `feature/consolidate-current-work` branches from
+`feature/local-ollama` at `ae0adb3`. The only untracked file is user-owned
+`hello.txt`; it is excluded from this delivery. Prior delivery records above are
+historical evidence, not fresh verification. Use one verified commit per step.
+
+- [x] 1. Record this plan and verify the baseline.
+  Verification: full unittest suite, Ruff lint/format, and `git diff --check`.
+  Result: all 217 tests passed; Ruff lint and formatting (41 files), and diff
+  checks passed. No baseline failures. Starting tracked tree was clean.
+- [ ] 2. Use locked runtime/development dependencies in CI.
+  Verification: inspect workflow structure; run its locked sync and test commands.
+- [ ] 3. Enforce existing Ruff lint and formatting standards in CI.
+  Verification: run both locked Ruff commands and inspect workflow steps.
+- [ ] 4. Check syntax across application and test modules.
+  Verification: `uv run --locked python -m compileall -q app tests`.
+- [ ] 5. Correct launcher project roots and verify external-directory use.
+  Verification: focused launcher regressions without provider requests.
+- [ ] 6. Verify an isolated wheel installation and entry point in CI.
+  Verification: build wheel, install in a fresh environment, run help and non-TTY
+  startup outside the checkout with checkout import paths removed.
+- [ ] 7. Reconcile clean-code findings and partial delivery status.
+  Verification: audit changed claims against implementation and focused tests.
+- [ ] 8. Refresh architecture and roadmap status.
+  Verification: cross-check changed module descriptions and milestone checkboxes.
+- [ ] 9. Align contributor documentation with actual local and CI checks.
+  Verification: exercise deterministic documented commands and check local links.
+- [ ] 10. Record final audit and integration readiness.
+  Verification: full tests, Ruff lint/format, syntax, packaging smoke, diff review,
+  and refreshed remote branch relationships. Record any unavailable checks.
+
+Execution: mark exactly one item in progress, verify it, record its result, and
+commit only intended files before starting the next item. Stop on unresolved
+verification failures. Record substantial scope changes before implementing them.
+Live Ollama checks remain opt-in. Branch integration follows final graph review.
