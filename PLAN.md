@@ -172,8 +172,12 @@ historical evidence, not fresh verification. Use one verified commit per step.
   dependency compatibility and import location, and verified installed help and
   exit code 2 on non-TTY startup from an unrelated directory. No provider calls.
   CI runs the same script; Ruff lint/format (43 files) and diff checks passed.
-- [ ] 7. Reconcile clean-code findings and partial delivery status.
+- [x] 7. Reconcile clean-code findings and partial delivery status.
   Verification: audit changed claims against implementation and focused tests.
+  Result: updated current dispositions with source/test evidence and preserved
+  historical delivery records. Explicitly retained incomplete extraction,
+  legacy import-time configuration, annotations, and broad tool exception
+  handling as open work. All 109 focused tests and diff checks passed.
 - [ ] 8. Refresh architecture and roadmap status.
   Verification: cross-check changed module descriptions and milestone checkboxes.
 - [ ] 9. Align contributor documentation with actual local and CI checks.
