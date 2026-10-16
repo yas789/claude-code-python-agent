@@ -148,8 +148,10 @@ historical evidence, not fresh verification. Use one verified commit per step.
   including development dependencies, and runs checks with uv. Sync, syntax,
   all 217 tests, and diff checks passed. Workflow structure manually reviewed;
   actionlint is unavailable locally. GitHub-hosted execution awaits a push.
-- [ ] 3. Enforce existing Ruff lint and formatting standards in CI.
+- [x] 3. Enforce existing Ruff lint and formatting standards in CI.
   Verification: run both locked Ruff commands and inspect workflow steps.
+  Result: named lint and formatting CI steps use the existing configuration;
+  both commands passed (41 formatted files), with clean diff checks.
 - [ ] 4. Check syntax across application and test modules.
   Verification: `uv run --locked python -m compileall -q app tests`.
 - [ ] 5. Correct launcher project roots and verify external-directory use.

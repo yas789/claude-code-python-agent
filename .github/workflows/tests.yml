@@ -32,6 +32,12 @@ jobs:
       - name: Install locked dependencies
         run: uv sync --locked
 
+      - name: Check lint
+        run: uv run --locked ruff check app tests
+
+      - name: Check formatting
+        run: uv run --locked ruff format --check app tests
+
       - name: Check syntax
         run: uv run --locked python -m py_compile app/main.py
 
