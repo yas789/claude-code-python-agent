@@ -185,8 +185,14 @@ historical evidence, not fresh verification. Use one verified commit per step.
   budgeting, execution, legacy errors, and extraction remain explicit. Compared
   claims with implementation and ran all 34 focused registry/workspace/session/
   configuration/error tests; diff checks passed.
-- [ ] 9. Align contributor documentation with actual local and CI checks.
+- [x] 9. Align contributor documentation with actual local and CI checks.
   Verification: exercise deterministic documented commands and check local links.
+  Result: README lists the exact CI sequence, uv version, launcher distinctions,
+  packaging isolation/build requirements, and separate opt-in live verification.
+  Ran the documented sequence: locked sync, Ruff lint/format (43 files), recursive
+  syntax, all 221 tests, and isolated wheel smoke passed. Local Markdown link
+  targets and the bounded-read anchor were inspected; diff checks passed.
+  Live Ollama was not run during consolidation.
 - [ ] 10. Record final audit and integration readiness.
   Verification: full tests, Ruff lint/format, syntax, packaging smoke, diff review,
   and refreshed remote branch relationships. Record any unavailable checks.

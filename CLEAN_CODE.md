@@ -50,7 +50,7 @@ partial; see [CLEAN_CODE_PLAN.md](CLEAN_CODE_PLAN.md).
 | Duplicated validation and disconnected schema/function registries | Medium | `app/main.py` | Fixed: `app/validation.py`, `app/registry.py`; registry/schema/validation tests |
 | Tests depend on repository files, fixed indexes, and conditional skips | Medium | `tests/` | Fixed for tool fixtures/contracts: temporary workspaces, call-ID lookup, unconditional contracts; launcher tests intentionally inspect actual launchers |
 | Fakes mutate scripts and retain shared historical references | Medium | `tests/helpers.py` | Fixed: copied response queue and deep request snapshots; `tests/test_helpers.py` |
-| Dependency environment and style checks are inconsistent | Medium | `pyproject.toml`, CI, README | CI fixed: locked sync, Ruff, recursive syntax, tests, and installed-wheel smoke; contributor-command alignment follows in consolidation step 9 |
+| Dependency environment and style checks are inconsistent | Medium | `pyproject.toml`, CI, README | Fixed: CI and contributor commands use locked sync, Ruff, recursive syntax, tests, and installed-wheel smoke |
 | Remote launcher points at `.codecrafters` instead of project root | Medium | `.codecrafters/run.sh` | Fixed: absolute checkout roots with caller cwd preserved; `tests/test_launchers.py` |
 
 ## Acceptance evidence
