@@ -178,8 +178,13 @@ historical evidence, not fresh verification. Use one verified commit per step.
   historical delivery records. Explicitly retained incomplete extraction,
   legacy import-time configuration, annotations, and broad tool exception
   handling as open work. All 109 focused tests and diff checks passed.
-- [ ] 8. Refresh architecture and roadmap status.
+- [x] 8. Refresh architecture and roadmap status.
   Verification: cross-check changed module descriptions and milestone checkboxes.
+  Result: documented both entry points, actual modules and call flow, atomic
+  edits, validation, injected workspace state, and model-independent CI. Pending
+  budgeting, execution, legacy errors, and extraction remain explicit. Compared
+  claims with implementation and ran all 34 focused registry/workspace/session/
+  configuration/error tests; diff checks passed.
 - [ ] 9. Align contributor documentation with actual local and CI checks.
   Verification: exercise deterministic documented commands and check local links.
 - [ ] 10. Record final audit and integration readiness.
