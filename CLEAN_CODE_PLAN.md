@@ -21,13 +21,13 @@ Every step requires focused tests, formatting/lint checks when available, and
 - [x] 10. Centralize registry and argument decoding. Verify malformed calls in verbose mode.
 - [x] 11. Extract bounded logging and JSON-aware summaries. Verify diagnostics.
 - [x] 12. Introduce explicit workspace context. Verify independent workspaces.
-- [~] 13. Extract read/list operations. Verify pagination and bounded I/O.
+- [ ] 13. Extract read/list operations. Verify pagination and bounded I/O.
 - [ ] 14. Extract writes and pre-encode edits. Verify failures preserve files.
 - [ ] 15. Extract search and deterministic iterator cleanup. Verify search contracts.
 - [ ] 16. Isolate provider and runtime configuration. Verify environment changes.
 - [ ] 17. Extract agent orchestration and clear error boundaries. Verify recovery.
 - [ ] 18. Make CLI thin with expected-failure handling. Verify exit codes and output.
-- [ ] 19. Correct launcher roots. Verify launchers outside the checkout.
+- [x] 19. Correct launcher roots. Verify launchers outside the checkout.
 - [ ] 20. Enforce CI standards and finish audit/docs. Verify all checks and 20 commits.
 
 ## Verification record
@@ -54,3 +54,25 @@ Follow-up: the five-commit edit reliability delivery in `PLAN.md` completes the
 failure-preservation portion of step 14: pre-encoding, atomic replacement,
 permission/newline preservation, staging cleanup, and regression tests. The
 broader tool extraction checklist above remains partial.
+
+## Consolidation status
+
+This is the historical extraction plan, not the active delivery checklist. Steps
+1–12 were delivered in the original sequence. Step 13 has not been extracted:
+read/list operations still belong to `LocalTools` in `app/main.py`.
+
+Subsequent deliveries have completed portions of later steps:
+
+- Step 14: atomic staging is isolated in `app/writes.py`, but the write tools
+  themselves remain in `LocalTools`.
+- Steps 16/18: `app/settings.py` and `app/cli.py` provide runtime configuration
+  and a thin mlab entry point. The legacy entry point still loads `BASE_URL` at
+  import time, and provider/agent functions remain in `app/main.py`.
+- Step 19: consolidation corrected both launcher roots; four launcher regression
+  tests verify external-directory help, cwd preservation, spaces, and settings.
+- Step 20: consolidation configures locked dependencies, Ruff, recursive syntax,
+  tests, and isolated installed-wheel checks in CI. Remaining extraction and the
+  final clean-code audit are not complete; the original 20-commit target was not
+  fulfilled by relabeling later delivery commits.
+
+Continue using [PLAN.md](PLAN.md) for the active ten-commit consolidation record.

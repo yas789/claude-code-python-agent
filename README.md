@@ -132,6 +132,20 @@ The original `./your_program.sh --prompt "..."` launcher remains available and
 defaults to local Granite. Its Python entry point (`app.main`) retains the
 original OpenRouter configuration behavior.
 
+### Entry points and working directories
+
+| Entry point | Behavior |
+| --- | --- |
+| `mlab` / `uv run mlab` | Interactive or one-shot; local-first settings described below |
+| `./your_program.sh --prompt "..."` | Legacy one-shot CLI; defaults to local Ollama and Granite, with `OPENROUTER_*` provider overrides |
+| `.codecrafters/run.sh --prompt "..."` | Legacy one-shot CLI; caller supplies `OPENROUTER_API_KEY`, optional `OPENROUTER_BASE_URL`, and optional `--model` |
+| `uv run python -m app.main --prompt "..."` | Legacy one-shot CLI; OpenRouter URL and Claude Haiku defaults |
+
+Both shell launchers resolve the checkout's project/import root without changing
+the working directory. Invoke them by path from another project to inspect that
+project, or pass `--workspace` explicitly. An installed `mlab` also uses the
+current directory by default. The legacy CLI does not use the `MLAB_*` settings.
+
 ## Provider configuration
 
 `mlab` needs no API key for local Ollama. Runtime overrides:
@@ -342,43 +356,49 @@ edit targets are rejected before mutation.
 
 ## Development
 
-Install the locked runtime and development dependencies:
+Requires Python 3.14+ and uv. CI uses Python 3.14 and uv 0.12.19. From the
+checkout root, run the same verification sequence as CI:
 
 ```sh
 uv sync --locked
-```
-
-Run all checks in the project environment; tests use scoped client mocks and
-never replace the installed OpenAI package globally.
-
-Run syntax checks:
-
-```sh
-uv run --locked python -m py_compile app/main.py
-```
-
-Run tests:
-
-```sh
-uv run --locked python -m unittest discover -s tests -p 'test_*.py'
-```
-
-Check formatting and lint:
-
-```sh
 uv run --locked ruff check app tests
 uv run --locked ruff format --check app tests
+uv run --locked python -m compileall -q app tests
+uv run --locked python -m unittest discover -s tests -p 'test_*.py'
+uv run --locked python tests/package_smoke.py
 ```
 
-Opt-in live Ollama verification (requires the installed command):
+Before committing, also check whitespace errors with `git diff --check`.
+`uv sync --locked` installs runtime and development dependencies and fails if
+the lockfile is stale. Use `uv run --locked ruff format app tests` to apply
+formatting when needed.
+
+Ordinary tests use scoped scripted clients and temporary workspaces. They do not
+require Ollama or credentials, and never replace the installed OpenAI package
+globally. The suite includes real pseudo-terminal startup/help/exit and shell
+launcher checks targeting macOS and Linux (CI). Shell launcher tests require uv
+on PATH.
+
+`tests/package_smoke.py` builds a fresh wheel, exports hashed runtime requirements
+from the lockfile, and installs both in a temporary isolated environment. It
+checks dependency compatibility, installed import location, `mlab --help`, and
+non-TTY startup from another directory without checkout import paths. It cleans
+up its artifacts and makes no model requests. Building/installing may need
+package-index access; the isolated build backend follows `pyproject.toml`'s build
+requirements rather than the runtime lockfile.
+
+### Optional live Ollama check
+
+This check requires a running Ollama instance, the Granite model, and an installed
+command (see setup above). It is separate from the CI sequence:
 
 ```sh
 uv run --locked python tests/live_mlab.py --command "$HOME/.local/bin/mlab"
 ```
 
 This creates a temporary workspace, verifies an actual file tool through the
-installed command, and checks a real follow-up conversation. Ordinary tests use
-scripted clients and include a pseudo-terminal startup/help/exit check.
+installed command, and checks a real follow-up conversation. Passing deterministic
+checks does not imply this live check has been run; record its result separately.
 
 ## Architecture and Long-Term Plan
 
@@ -391,4 +411,7 @@ structure, and milestones toward a reliable edit-and-test coding assistant.
 - `dev` is the development integration branch.
 - `feature/*` branches are used for focused changes.
 
-GitHub Actions runs tests for pushes to `main`, `dev`, and `feature/**`, and for pull requests into `main` or `dev`.
+GitHub Actions runs the verification sequence above for pushes to `main`, `dev`,
+and `feature/**`, and for pull requests into `main` or `dev`. See
+[.github/workflows/tests.yml](.github/workflows/tests.yml) for the configured steps.
+Local check results and milestone status are recorded in [PLAN.md](PLAN.md).

@@ -29,7 +29,9 @@ footer decoration. Redirected one-shot output remains raw text.
 | `app/session.py` | In-memory history and failed-turn protocol repair |
 | `app/events.py` | Presentation-independent request/tool notifications |
 | `app/failures.py` | Bounded, actionable expected-failure descriptions |
-| `app/main.py` | Existing agent loop and workspace tool implementations |
+| `app/main.py` | Shared agent loop, workspace tools, and legacy one-shot CLI |
+| `app/registry.py`, `app/schemas.py` | Validated tool dispatch and advertised contracts |
+| `app/workspace.py`, `app/validation.py`, `app/writes.py` | Workspace context, arguments, and atomic edit staging |
 
 The interactive session reuses the original agent loop with caller-owned history
 and an optional event callback. Existing one-shot callers keep their original
@@ -48,3 +50,6 @@ remain. Cancellation does not undo filesystem operations already completed.
 
 These are extension points, not implemented skills, streaming, or saved sessions.
 The current delivery checklist and verification history are in `PLAN.md`.
+The current core architecture and pending coding-loop milestones are in
+[ROADMAP.md](ROADMAP.md); the partial extraction record is in
+[CLEAN_CODE_PLAN.md](CLEAN_CODE_PLAN.md).

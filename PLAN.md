@@ -127,3 +127,150 @@ the terminal milestone above is complete. Preserve the existing tool receipt.
   in `CLEAN_CODE.md`; the partial refactor plan records this focused delivery.
 
 Each completed step is one commit; update results before starting the next step.
+
+## Consolidation: ten-commit delivery
+
+Goal: establish a freshly verified baseline, reproducible CI, working launchers
+and packaging, accurate documentation, and an evidence-backed integration path.
+
+Starting state: `feature/consolidate-current-work` branches from
+`feature/local-ollama` at `ae0adb3`. The only untracked file is user-owned
+`hello.txt`; it is excluded from this delivery. Prior delivery records above are
+historical evidence, not fresh verification. Use one verified commit per step.
+
+- [x] 1. Record this plan and verify the baseline.
+  Verification: full unittest suite, Ruff lint/format, and `git diff --check`.
+  Result: all 217 tests passed; Ruff lint and formatting (41 files), and diff
+  checks passed. No baseline failures. Starting tracked tree was clean.
+- [x] 2. Use locked runtime/development dependencies in CI.
+  Verification: inspect workflow structure; run its locked sync and test commands.
+  Result: CI pins uv 0.12.19 (the locally verified version), syncs the lockfile
+  including development dependencies, and runs checks with uv. Sync, syntax,
+  all 217 tests, and diff checks passed. Workflow structure manually reviewed;
+  actionlint is unavailable locally. GitHub-hosted execution awaits a push.
+- [x] 3. Enforce existing Ruff lint and formatting standards in CI.
+  Verification: run both locked Ruff commands and inspect workflow steps.
+  Result: named lint and formatting CI steps use the existing configuration;
+  both commands passed (41 formatted files), with clean diff checks.
+- [x] 4. Check syntax across application and test modules.
+  Verification: `uv run --locked python -m compileall -q app tests`.
+  Result: recursive syntax check passed; CI and README now use the same command.
+  Diff checks passed.
+- [x] 5. Correct launcher project roots and verify external-directory use.
+  Verification: focused launcher regressions without provider requests.
+  Result: reproduced the remote launcher's `.codecrafters` root error before
+  fixing it. Both launchers now use absolute checkout roots without changing the
+  caller's working directory. Four regressions passed, covering spaces in paths,
+  provider defaults/overrides, forwarded arguments, and real external-directory
+  help. Ruff lint/format (42 files) and diff checks passed after formatting the
+  new test module.
+- [x] 6. Verify an isolated wheel installation and entry point in CI.
+  Verification: build wheel, install in a fresh environment, run help and non-TTY
+  startup outside the checkout with checkout import paths removed.
+  Result: `tests/package_smoke.py` passed: built a fresh wheel, installed hashed
+  locked runtime requirements and the wheel into a temporary venv, checked
+  dependency compatibility and import location, and verified installed help and
+  exit code 2 on non-TTY startup from an unrelated directory. No provider calls.
+  CI runs the same script; Ruff lint/format (43 files) and diff checks passed.
+- [x] 7. Reconcile clean-code findings and partial delivery status.
+  Verification: audit changed claims against implementation and focused tests.
+  Result: updated current dispositions with source/test evidence and preserved
+  historical delivery records. Explicitly retained incomplete extraction,
+  legacy import-time configuration, annotations, and broad tool exception
+  handling as open work. All 109 focused tests and diff checks passed.
+- [x] 8. Refresh architecture and roadmap status.
+  Verification: cross-check changed module descriptions and milestone checkboxes.
+  Result: documented both entry points, actual modules and call flow, atomic
+  edits, validation, injected workspace state, and model-independent CI. Pending
+  budgeting, execution, legacy errors, and extraction remain explicit. Compared
+  claims with implementation and ran all 34 focused registry/workspace/session/
+  configuration/error tests; diff checks passed.
+- [x] 9. Align contributor documentation with actual local and CI checks.
+  Verification: exercise deterministic documented commands and check local links.
+  Result: README lists the exact CI sequence, uv version, launcher distinctions,
+  packaging isolation/build requirements, and separate opt-in live verification.
+  Ran the documented sequence: locked sync, Ruff lint/format (43 files), recursive
+  syntax, all 221 tests, and isolated wheel smoke passed. Local Markdown link
+  targets and the bounded-read anchor were inspected; diff checks passed.
+  Live Ollama was not run during consolidation.
+- [x] 10. Record final audit and integration readiness.
+  Verification: full tests, Ruff lint/format, syntax, packaging smoke, diff review,
+  and refreshed remote branch relationships. Record any unavailable checks.
+  Result: accepted step 9's complete passing sequence against final code, reviewed
+  the milestone diff and confirmed unchanged application/dependency files, and
+  passed final diff checks. Refreshed origin refs, confirmed merged PR #19,
+  simulated a clean merge into origin/dev, and recorded the integration route
+  and pending hosted/live checks below. All ten delivery steps are complete.
+
+Execution: mark exactly one item in progress, verify it, record its result, and
+commit only intended files before starting the next item. Stop on unresolved
+verification failures. Record substantial scope changes before implementing them.
+Live Ollama checks remain opt-in. Branch integration follows final graph review.
+
+### Consolidation final audit — 2026-10-17
+
+The complete documented verification sequence passed in step 9 against the final
+code and CI configuration; only the audit record changes afterward:
+
+| Check | Result |
+| --- | --- |
+| `uv sync --locked` | Passed with uv 0.12.19; no dependency/lockfile changes |
+| `uv run --locked ruff check app tests` | Passed |
+| `uv run --locked ruff format --check app tests` | Passed; 43 files formatted |
+| `uv run --locked python -m compileall -q app tests` | Passed |
+| `uv run --locked python -m unittest discover -s tests -p 'test_*.py'` | 221 tests passed (217 baseline + 4 launcher regressions) |
+| `uv run --locked python tests/package_smoke.py` | Fresh wheel, hashed locked runtime install, dependency check, isolated imports, help, and non-TTY exit passed |
+| Full milestone diff | Reviewed launcher, workflow, tests, and documentation changes against `ae0adb3`; no application tool-contract changes |
+| `git diff --check ae0adb3` | Passed |
+| Workflow action availability | `astral-sh/setup-uv@v7` tag confirmed through GitHub API; workflow manually inspected |
+| GitHub-hosted workflow | Not run for this branch: it has not been pushed; `gh run list` returned no runs |
+| Live Ollama | Not run during consolidation; remains opt-in |
+
+`actionlint` is unavailable locally. These results establish local readiness on
+macOS, not a claim that the new workflow has passed on GitHub's Linux runner.
+
+#### Refreshed integration state
+
+`git fetch origin` found that PR #19 already merged `feature/local-ollama` into
+`dev`: <https://github.com/yas789/claude-code-python-agent/pull/19>.
+
+| Ref | Observed commit/state |
+| --- | --- |
+| Delivery base / `origin/feature/local-ollama` | `ae0adb3` |
+| `origin/dev` | `04af773`, the PR #19 merge; identical tracked tree to `ae0adb3` |
+| Local `dev` | `1b7c116`, 38 commits behind `origin/dev` |
+| `origin/main` | `66bf076` |
+| Local `main` | `49ba073`, one commit ahead of `origin/main`; that commit is already included in `origin/dev` |
+| Consolidation branch | Ten delivery commits from `ae0adb3` including this audit; no remote tracking branch yet |
+
+A `git merge-tree --write-tree origin/dev HEAD` simulation completed without
+conflicts before this documentation-only audit. This does not merge or update
+any branch. The PR diff against `origin/dev` contains the consolidation changes,
+not a second copy of the terminal/edit-reliability delivery.
+
+Recommended integration sequence:
+
+1. Push `feature/consolidate-current-work` and obtain passing hosted CI results.
+2. Open/review a PR from this branch into `dev`; merge after review and CI.
+3. Fast-forward local `dev` from `origin/dev` when ready to use it locally.
+4. Review a subsequent `dev` → `main` promotion including the already merged
+   terminal/edit-reliability work and this consolidation.
+
+No push, PR creation, branch merge, or local main/dev update was performed in
+this milestone. The next functional delivery is tool-budget correction, followed
+by command execution and an end-to-end coding-loop evaluation. Structural
+extraction and legacy runtime/error-boundary gaps remain documented in
+`CLEAN_CODE.md` and `ROADMAP.md`. User-owned `hello.txt` remains untracked.
+
+#### Delivery commits
+
+1. `4daa15a` — Plan consolidation and record verified baseline
+2. `5f04540` — Use locked dependencies in CI
+3. `803df27` — Enforce Ruff checks in CI
+4. `1be0f25` — Check syntax across application and tests
+5. `d267def` — Fix launcher project roots and verify external use
+6. `ca76398` — Verify packaged mlab entry point in CI
+7. `a298b78` — Reconcile clean-code review with implemented fixes
+8. `5c20b9e` — Refresh architecture and roadmap status
+9. `c59402c` — Align contributor documentation with verified checks
+10. This audit commit — Record consolidation audit and integration readiness
